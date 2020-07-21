@@ -17,7 +17,7 @@
 #include <sysparam.h>
 
 #include "common.h"
-#include "comm.h"
+#include "module_manager.h"
 #include "ota.h"
 
 i2c_dev_t rtc_dev = {.addr = DS3231_ADDR, .bus = 0};
@@ -71,10 +71,7 @@ void telnet_task(void *pvParameters) {
 	socklen_t client_address_size = sizeof(struct sockaddr_in);
 	
 	int len;
-	char aux[50];
-	unsigned int addr;
-	
-	comm_error_t error;
+	char *auxptr;
 	
 	char receive_buffer[200];
 	char send_buffer[200];
@@ -101,6 +98,7 @@ void telnet_task(void *pvParameters) {
 		telnet_send_line(client_socket, "Firmware version: "FW_VERSION"");
 		telnet_send_line(client_socket, "Build date: "__DATE__" "__TIME__);
 		telnet_send_line(client_socket, "Type help for list of commands.");
+		telnet_send(client_socket, "> ");
 		
 		while((len = recv_telnet_line(client_socket, receive_buffer, 200)) >= 0) {
 			if(!len) {
@@ -108,73 +106,61 @@ void telnet_task(void *pvParameters) {
 				continue;
 			}
 			
-			if(receive_buffer[2] == '?') {
-				receive_buffer[2] = '\0';
+			if (receive_buffer[len - 1] == '?') {
+				receive_buffer[len - 1] = '\0';
 				
-				sscanf(receive_buffer, "%x", &addr);
-				
-				if(strlen(&receive_buffer[3]) > 31) {
-					sprintf(send_buffer, "Content '%s' too long.", &receive_buffer[3]);
+				if (sysparam_get_string(receive_buffer, &auxptr) == SYSPARAM_OK) {
+					sprintf(send_buffer, "\"%s\" = \"%s\".", receive_buffer, auxptr);
+					free(auxptr);
 				} else {
-					comm_send_command('R', (uint8_t) addr, &receive_buffer[3]);
-					
-					if((error = comm_receive_response('R', aux, 50)))
-						sprintf(send_buffer, "Error receiving response! (%s)", comm_error_str(error));
-					else if(aux[0] == '\x15')
-						sprintf(send_buffer, "Received error: %s", &aux[1]);
-					else
-						sprintf(send_buffer, "%s", aux);
+					sprintf(send_buffer, "Error reading \"%s\".", receive_buffer);
 				}
 				
 				telnet_send_line(client_socket, send_buffer);
-			} else if(receive_buffer[2] == '=') {
-				receive_buffer[2] = '\0';
+			} else if ((auxptr = strchr(receive_buffer, '='))) {
+				*auxptr = '\0';
+				auxptr++;
 				
-				sscanf(receive_buffer, "%x", &addr);
-				
-				if(strlen(&receive_buffer[3]) > 31) {
-					sprintf(send_buffer, "Content '%s' too long.", &receive_buffer[3]);
-				} else {
-					comm_send_command('W', (uint8_t) addr, &receive_buffer[3]);
-					
-					if((error = comm_receive_response('W', aux, 50)))
-						sprintf(send_buffer, "Error receiving response! (%s)", comm_error_str(error));
-					else if(aux[0] == '\x15')
-						sprintf(send_buffer, "Received error: %s", &aux[1]);
-					else
-						sprintf(send_buffer, "OK.", aux);
-				}
+				if (sysparam_set_string(receive_buffer, auxptr) == SYSPARAM_OK)
+					sprintf(send_buffer, "Value of \"%s\" set to \"%s\".", receive_buffer, auxptr);
+				else
+					sprintf(send_buffer, "Error setting value of \"%s\".", receive_buffer);
 				
 				telnet_send_line(client_socket, send_buffer);
+			} else if(!strcmp(receive_buffer, "dump")) {
+				sysparam_iter_t iterator;
 				
-			} else if(!strcmp(receive_buffer, "list")) {
-				unsigned int qty_channels;
-				
-				for(addr = 0x00; addr < 0x7F; addr++) {
-					comm_send_command('P', (uint8_t) addr, "");
-					if((error = comm_receive_response('P', aux, 50)) == COMM_OK) {
-						sprintf(send_buffer, "%02X -> %s", addr, aux);
-						telnet_send_line(client_socket, send_buffer);
-						
-						strtok(aux, ":");
-						if(sscanf(strtok(NULL, ":"), "%u", &qty_channels) == 1) {
-							for(int ch = 0; ch < qty_channels; ch++) {
-								sprintf(aux, "%u", ch);
-								comm_send_command('D', (uint8_t) addr, aux);
-								
-								if((error = comm_receive_response('D', aux, 50)) == COMM_OK) {
-									telnet_send_line(client_socket, aux);
-								} else {
-									sprintf(send_buffer, "Error receiving response! (%s)", comm_error_str(error));
-									telnet_send_line(client_socket, send_buffer);
-								}
-							}
-						}
-					} else if(error != COMM_ERROR_TIMEOUT) {
-						sprintf(send_buffer, "%02X -> Error (%s)", addr, comm_error_str(error));
-						telnet_send_line(client_socket, send_buffer);
-					}
+				if(sysparam_iter_start(&iterator) != SYSPARAM_OK) {
+					telnet_send_line(client_socket, "Error creating iterator!");
+					continue;
 				}
+				
+				while (true) {
+					if (sysparam_iter_next(&iterator) != SYSPARAM_OK)
+						break;
+					
+					sprintf(send_buffer, "\t\"%s\" = \"%s\"", iterator.key, (iterator.binary) ? "BINARY" : ((char *) iterator.value));
+					
+					telnet_send_line(client_socket, send_buffer);
+				}
+				sysparam_iter_end(&iterator);
+				
+				telnet_send_line(client_socket, "Done.");
+			} else if(!strcmp(receive_buffer, "compact")) {
+				telnet_send_line(client_socket, "Compacting sysparam data...");
+				sysparam_compact();
+			} else if(!strcmp(receive_buffer, "update")) {
+				int result;
+				
+				result = update_module_list();
+				
+				if(result <= 0) {
+					telnet_send_line(client_socket, "No modules found!");
+					continue;
+				}
+				
+				sprintf(send_buffer, "Found %d modules.", result);
+				telnet_send_line(client_socket, send_buffer);
 				
 			} else if(!strcmp(receive_buffer, "rtc")) {
 					struct tm time;
@@ -192,7 +178,14 @@ void telnet_task(void *pvParameters) {
 			} else if(!strncmp(receive_buffer, "ota", 3)) {
 				char *hash_ptr;
 				
-				hash_ptr = strchr(receive_buffer, ' ') + 1;
+				hash_ptr = strchr(receive_buffer, ' ');
+				
+				if(hash_ptr == NULL) {
+					telnet_send_line(client_socket, "<hash> must be an MD5 hash in hexadecimal format.");
+					continue;
+				}
+				
+				hash_ptr++;
 				
 				if(strlen(hash_ptr) != 32) {
 					telnet_send_line(client_socket, "<hash> must be an MD5 hash in hexadecimal format.");
@@ -216,9 +209,11 @@ void telnet_task(void *pvParameters) {
 			} else if(!strcmp(receive_buffer, "help")) {
 				telnet_send(client_socket,
 					"Available commands:\n"
-					" <addr>?<content> -> Send read command\r\n"
-					" <addr>=<content> -> Send write command\r\n"
-					" list             -> List connected devices\r\n"
+					" <key>?           -> Query the value of <key>\n"
+					" <key>=<value>    -> Set <key> to text <value>\n"
+					" dump             -> Show all set keys/values pairs\n"
+					" compact          -> Compact sysparam data\n"
+					" update           -> Update module list\r\n"
 					" ota <hash>       -> Update firmware\r\n"
 					" rtc              -> Read RTC data\r\n"
 					" restart          -> Restart device\r\n"

@@ -42,7 +42,7 @@ void comm_init() {
 	uart_clear_rxfifo(0);
 }
 
-void comm_send_command(char cmd, uint8_t addr, const char *content) {
+void comm_send_command(char cmd, unsigned int addr, const char *content) {
 	char tx_buffer[64];
 	size_t tx_size;
 	uint16_t checksum;

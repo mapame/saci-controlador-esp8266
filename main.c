@@ -1,6 +1,5 @@
 #include <espressif/esp_common.h>
 #include <espressif/esp_misc.h>
-#include <esp/uart.h>
 #include <esp8266.h>
 
 #include <stdio.h>
@@ -15,25 +14,32 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
-#include <message_buffer.h>
-#include <semphr.h>
 
 #include "common.h"
+#include "module_manager.h"
 #include "comm.h"
 
-int ap_mode = 0;
+char ap_mode = 0;
 
 void telnet_task(void *pvParameters);
+void httpd_task(void *pvParameters);
+void module_manager_task(void *pvParameters);
 
 void IRAM blink_task(void *pvParameters) {
 	int cycle = 0;
+	
 	while(1){
 		if(ap_mode) {
 			gpio_write(LED_R_PIN, 1);
 			gpio_write(LED_G_PIN, 1);
 		} else {
-			gpio_write(LED_R_PIN, cycle % 2);
-			gpio_write(LED_G_PIN, (cycle + 1) % 2);
+			if(sdk_wifi_station_get_connect_status() == STATION_GOT_IP) {
+				gpio_write(LED_G_PIN, cycle % 2);
+				gpio_write(LED_R_PIN, 0);
+			} else {
+				gpio_write(LED_R_PIN, cycle % 2);
+				gpio_write(LED_G_PIN, 0);
+			}
 		}
 		
 		cycle = (cycle + 1) % 2;
@@ -45,9 +51,9 @@ void IRAM blink_task(void *pvParameters) {
 void user_init(void) {
 	int button = 0;
 	
-	char * config_wifi_ssid = NULL;
-	char * config_wifi_password = NULL;
-	char * config_wifi_ap_password = NULL;
+	char *config_wifi_ssid = NULL;
+	char *config_wifi_password = NULL;
+	char *config_wifi_ap_password = NULL;
 	
 	comm_init();
 	
@@ -73,7 +79,7 @@ void user_init(void) {
 	
 	for(int i = 0; i < 8; i++) {
 		gpio_write(LED_R_PIN, i % 2);
-		gpio_write(LED_G_PIN, (i + 1) % 2);
+		gpio_write(LED_G_PIN, i % 2);
 		
 		button += (gpio_read(BTN_PIN) ? 0 : 1);
 		
@@ -131,6 +137,8 @@ void user_init(void) {
 		sdk_wifi_station_set_config(&wifi_config);
 	}
 	
-	xTaskCreate(telnet_task, "telnet_task", 512, NULL, 2, NULL);
-	xTaskCreate(blink_task, "blink_task", 256, NULL, 1, NULL);
+	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 4, NULL);
+	xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 3, NULL);
+	xTaskCreate(&httpd_task, "http_task", 512, NULL, 2, NULL);
+	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, NULL);
 }

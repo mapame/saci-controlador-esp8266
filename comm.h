@@ -12,6 +12,6 @@ typedef enum {
 
 const char *comm_error_str(comm_error_t error);
 void comm_init();
-void comm_send_command(char cmd, uint8_t addr, const char *content);
+void comm_send_command(char cmd, unsigned int addr, const char *content);
 comm_error_t comm_receive_response(char cmd, char *content_buffer, unsigned int buffer_size);
 
