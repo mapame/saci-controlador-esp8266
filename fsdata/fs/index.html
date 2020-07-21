@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>S.A.C.I. - Painel de Controle</title>
+	<link rel="stylesheet" href="siimple.min.css">
+	<link rel="stylesheet" href="index_style.css">
+</head>
+<body>
+	<div class="siimple-navbar siimple-navbar--large siimple-navbar--dark">
+		<a class="siimple-navbar-title" href=".">S.A.C.I.</a>
+		<a class="siimple-btn siimple-btn--primary siimple--float-right siimple--ml-2" id="configpage-button">Configurações</a>
+		<div class="siimple--float-right" id="navbar-login">
+			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha">
+			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button">Login</a>
+		</div>
+	</div>
+	<div class="siimple-content siimple-content--large">
+		<div id="mainAlert" class="siimple-alert siimple-alert--primary">
+		</div>
+		<div id="heapAlert" class="siimple-alert siimple-alert--primary">
+		</div>
+		<div class="siimple-grid">
+			<div id="raw-module-card-row" class="siimple-grid-row">
+			</div>
+		</div>
+	</div>
+	<div class="siimple-footer siimple-footer--light" align="center">
+		&copy; 2020 Matheus Medeiros
+	</div>
+	
+	<div style="display: none;">
+		<div id="raw-module-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
+			<div class="siimple-card">
+				<div class="siimple-card-header" align="center">
+					<div class="siimple-h5 siimple--mb-0 raw-module-card-header"></div>
+				</div>
+				<div class="siimple-card-body">
+					<div class="siimple-list siimple--mb-0 raw-module-card-channel-list">
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div class="siimple-card-body">
+			<div class="siimple-list siimple--mb-0">
+				<div class="siimple-list-item">
+					<span class="siimple-tag siimple-tag--rounded siimple-tag--primary">0</span>
+				Item 1
+				</div>
+				
+				<div class="siimple-list-item">
+					<div class="siimple-switch siimple--float-right siimple--mr-0">
+						<input type="checkbox" id="mySwitch" checked="">
+						<label for="mySwitch"></label>
+					</div>
+				Item 2
+				</div>
+		</div>
+	</div>
+	</div>
+	
+	<script src="index_script.js"></script>
+</body>
+</html>
