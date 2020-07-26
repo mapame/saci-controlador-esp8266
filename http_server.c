@@ -12,18 +12,160 @@
 
 #include "common.h"
 #include "module_manager.h"
+#include "mjson.h"
+
+#define KEY_EXPIRATION_TIME 30U * 60U
+
+typedef enum wsop_e {
+	WSOP_INVALID,
+	WSOP_LOGIN,
+	WSOP_LOGOUT,
+	WSOP_NOP,
+	WSOP_CONFIG_WRITE,
+	WSOP_CONFIG_QUERY,
+	WSOP_MODULE_VALUE_WRITE,
+	WSOP_TOGGLE_DIAGNOSE_MODE,
+	WSOP_RESTART,
+	WSOP_SENTINEL
+} wsop_t;
+
+typedef struct wsop_txt_s {
+	wsop_t wsop;
+	char text[32];
+} wsop_txt_t;
+
+const wsop_txt_t wsop_list[] = {
+	{ WSOP_LOGIN, "login" },
+	{ WSOP_LOGOUT, "logout" },
+	{ WSOP_NOP, "nop" },
+	{ WSOP_CONFIG_WRITE, "config_write" },
+	{ WSOP_MODULE_VALUE_WRITE, "module_value_write" },
+	{ WSOP_TOGGLE_DIAGNOSE_MODE, "toggle_diagnose_mode" },
+	{ WSOP_RESTART, "restart" },
+	{ WSOP_SENTINEL, "" }
+};
 
 struct tcp_pcb *client_list[3] = {NULL};
 int client_qty = 0;
 
-void websocket_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
-	char response[3] = "ok";
+char access_key_txt[33];
+uint32_t access_key_time;
+
+static wsop_t wsop_get_op(const char *optext) {
+	for(int i = 0; wsop_list[i].wsop != WSOP_SENTINEL; i++)
+		if(!strcmp(wsop_list[i].text, optext))
+			return wsop_list[i].wsop;
 	
-	for(int i = 0; i < 3; i++)
-		if(client_list[i] == pcb) {
-			websocket_write(pcb, (uint8_t*)response, 2, WS_TEXT_MODE);
+	return WSOP_INVALID;
+}
+
+static inline uint32_t get_elapsed_time(uint32_t time) {
+	uint32_t time_now = sdk_system_get_time();
+	
+	return (time_now < time) ? ((((uint32_t)0xFFFFFFFF) - time) + time_now + ((uint32_t)1)) : (time_now - time);
+}
+
+static void create_key() {
+	uint8_t key_value[16];
+	
+	access_key_time = sdk_system_get_time();
+	
+	hwrand_fill(key_value, 16);
+	
+	for(int i = 0; i < 16; i++)
+		sprintf(&(access_key_txt[i * 2]), "%02x", key_value[i]);
+	
+	access_key_txt[32] = '\0';
+}
+
+static inline void delete_key() {
+	access_key_txt[0] = '\0';
+}
+
+static int check_key(const char *key_text) {
+	if(get_elapsed_time(access_key_time) >= (KEY_EXPIRATION_TIME * 1000000U)) {
+		delete_key();
+		
+		return 1;
+	}
+	
+	if(key_text == NULL)
+		return -1;
+	
+	if(strncmp(key_text, access_key_txt, 32))
+		return 2;
+	
+	return 0;
+}
+
+void websocket_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
+	int client_i;
+	char aux[64];
+	wsop_t op;
+	
+	int token_type;
+	int token_len;
+	const char *token = NULL;
+
+	char response[256];
+	int response_len;
+	
+	for(client_i = 0; client_i < 3; client_i++)
+		if(client_list[client_i] == pcb)
 			break;
+	
+	if(client_i == 3)
+		return;
+	
+	if(mjson_get_string((char*)data, data_len, "$.op", aux, 64) <= 0)
+		return;
+	
+	op = wsop_get_op(aux);
+	
+	if(op != WSOP_LOGIN) {
+		if(mjson_get_string((char*)data, data_len, "$.key", aux, 64) != 32)
+			return;
+		
+		if(check_key(aux)) {
+			response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+			websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+			return;
 		}
+	}
+	
+	switch(op) {
+		case WSOP_LOGIN:
+			if(mjson_get_string((char*)data, data_len, "$.password", aux, 64) <= 0)
+				return;
+			
+			if(!strcmp(aux, "12345678")) {
+				create_key();
+				
+				response_len = snprintf(response, sizeof(response), "{\"key\":\"%s\"}", access_key_txt);
+			} else {
+				response_len = snprintf(response, sizeof(response), "{\"error\":\"wrong_password\"}");
+			}
+			
+			websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+			break;
+			
+		case WSOP_LOGOUT:
+			delete_key();
+			
+			response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+			websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+			break;
+			
+		case WSOP_NOP:
+			break;
+			
+		case WSOP_RESTART:
+			sdk_system_restart();
+			break;
+			
+		default:
+			return;
+	}
 }
 
 void websocket_open_cb(struct tcp_pcb *pcb, const char *uri) {

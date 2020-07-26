@@ -10,34 +10,43 @@
 <body>
 	<div class="siimple-navbar siimple-navbar--large siimple-navbar--dark">
 		<a class="siimple-navbar-title" href=".">S.A.C.I.</a>
-		<a class="siimple-btn siimple-btn--primary siimple--float-right siimple--ml-2" id="configpage-button">Configurações</a>
 		<div class="siimple--float-right" id="navbar-login">
 			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha">
-			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button">Login</a>
+			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button" onclick="login()">Entrar</a>
+		</div>
+		<div class="siimple--float-right siimple-btn-group" id="navbar-logged" style="display: none;">
+			<a class="siimple-btn siimple-btn--primary" id="configpage-button">Configurações</a>
+			<a class="siimple-btn siimple-btn--warning" id="logout-button"onclick="logout()">Sair</a>
 		</div>
 	</div>
+	<div class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--pb-1 siimple--pt-1">
+		<div class="siimple-navbar-item" style="cursor: default;"><div id="connection-status" title="..."></div></div>
+		<div id="system-memory" class="siimple-navbar-item siimple--float-right" style="cursor: default;"></div>
+		<div id="system-datetime" class="siimple-navbar-item siimple--float-right" style="cursor: default;">01/01/2020 23:59</div>
+		<div id="system-temperature" class="siimple-navbar-item siimple--float-right" style="cursor: default;">28 °C</div>
+	</div>
+	
 	<div class="siimple-content siimple-content--large">
-		<div id="mainAlert" class="siimple-alert siimple-alert--primary">
-		</div>
-		<div id="heapAlert" class="siimple-alert siimple-alert--primary">
-		</div>
-		<div class="siimple-grid">
-			<div id="raw-module-card-row" class="siimple-grid-row">
+		<div id="" class="siimple-grid">
+			<div id="diagnose-mode-card-row" class="siimple-grid-row">
 			</div>
 		</div>
+		
+		
 	</div>
+	
 	<div class="siimple-footer siimple-footer--light" align="center">
 		&copy; 2020 Matheus Medeiros
 	</div>
 	
 	<div style="display: none;">
-		<div id="raw-module-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
+		<div id="diagnose-mode-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
 			<div class="siimple-card">
 				<div class="siimple-card-header" align="center">
-					<div class="siimple-h5 siimple--mb-0 raw-module-card-header"></div>
+					<div class="siimple-h5 siimple--mb-0 diagnose-mode-card-header"></div>
 				</div>
 				<div class="siimple-card-body">
-					<div class="siimple-list siimple--mb-0 raw-module-card-channel-list">
+					<div class="siimple-list siimple--mb-0 diagnose-mode-card-channel-list">
 					</div>
 				</div>
 			</div>
