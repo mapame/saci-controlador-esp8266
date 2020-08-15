@@ -1,11 +1,3 @@
-#navbar-logo {
-	
-}
-
-#configpage-button {
-	
-}
-
 #login-input {
 	width: 8em;
 }
@@ -15,4 +7,20 @@
 	width: 20px;
 	height: 20px;
 	margin: 7px 0px 7px 0px;
+}
+
+#alert-outer-container {
+	position: relative;
+	height: 0;
+	top: -20px;
+}
+
+#alert-inner-container {
+	position: absolute;
+	width: 100%;
+	opacity: 0.9;
+}
+
+.siimple-alert {
+	overflow-wrap: break-word;
 }

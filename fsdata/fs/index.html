@@ -14,12 +14,12 @@
 			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha">
 			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button" onclick="login()">Entrar</a>
 		</div>
-		<div class="siimple--float-right siimple-btn-group" id="navbar-logged" style="display: none;">
-			<a class="siimple-btn siimple-btn--primary" id="configpage-button">Configurações</a>
-			<a class="siimple-btn siimple-btn--warning" id="logout-button"onclick="logout()">Sair</a>
+		<div class="siimple--float-right siimple-btn-group" id="navbar-logged">
+			<a class="siimple-btn siimple-btn--primary" id="configpage-button" onclick="toggleConfigPage()">Configurações</a>
+			<a class="siimple-btn siimple-btn--warning" id="logout-button" onclick="logout()">Sair</a>
 		</div>
 	</div>
-	<div class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--pb-1 siimple--pt-1">
+	<div class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--py-0">
 		<div class="siimple-navbar-item" style="cursor: default;"><div id="connection-status" title="..."></div></div>
 		<div id="system-memory" class="siimple-navbar-item siimple--float-right" style="cursor: default;"></div>
 		<div id="system-datetime" class="siimple-navbar-item siimple--float-right" style="cursor: default;">01/01/2020 23:59</div>
@@ -27,12 +27,112 @@
 	</div>
 	
 	<div class="siimple-content siimple-content--large">
-		<div id="" class="siimple-grid">
-			<div id="diagnose-mode-card-row" class="siimple-grid-row">
+		<div id="alert-outer-container">
+			<div id="alert-inner-container">
 			</div>
 		</div>
 		
+		<div id="dashboard-page">
+			<div id="diagnose-dashboard">
+				<div class="siimple-h3">Modo de Diagnostico</div>
+				<div class="siimple-rule"></div>
+				
+				<div class="siimple-h5" id="diagnose-mode-text">Nenhum módulo detectado.</div>
+				
+				<div class="siimple-grid">
+					<div id="diagnose-mode-card-row" class="siimple-grid-row">
+					</div>
+				</div>
+			</div>
+		</div>
 		
+		<div id="configuration-page">
+			<div class="siimple-h3">Configurações</div>
+			<div class="siimple-rule"></div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Gerais</div>
+				
+				<div class="siimple-form-field">
+					<label class="siimple-label">Modo de diagnostico:</label>
+					<div class="siimple-switch">
+						<input type="checkbox" id="mySwitch" checked>
+						<label for="mySwitch"></label>
+					</div>
+				</div>
+				
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Senha de Acesso</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper">Senha de acesso à página de configuração</div>
+				</div>
+			</div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Rede</div>
+				
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Senha Wi-Fi próprio</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper">Senha do modo roteador</div>
+				</div>
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Nome Wi-Fi</div>
+					<input type="text" class="siimple-input" placeholder="">
+					
+					<a class="siimple-btn siimple-btn--primary" id="wifi-choose-button">Escolher</a>
+					<div class="siimple-field-helper">Nome da rede a se conectar</div>
+				</div>
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Senha Wi-Fi</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper">Senha da rede a se conectar</div>
+				</div>
+			</div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Thingspeak</div>
+				
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">ID do canal</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper">Identificador do canal</div>
+				</div>
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Chave de acesso do canal</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper">API Key do canal</div>
+				</div>
+			</div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Telegram</div>
+				
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">Chave do Bot</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<div class="siimple-field-helper"></div>
+				</div>
+				<div class="siimple-form-field">
+					<div class="siimple-form-field-label">ID do Grupo</div>
+					<input type="text" class="siimple-input" placeholder="">
+					<a class="siimple-btn siimple-btn--primary" id="group-choose-button">Escolher</a>
+					<div class="siimple-field-helper">Nome do grupo ativo</div>
+				</div>
+			</div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Parametros</div>
+				
+			</div>
+			
+			<div class="siimple-form">
+				<div class="siimple-form-title">Entradas/Saídas</div>
+				
+			</div>
+			
+			<div class="siimple-btn siimple-btn--success">Salvar</div>
+		</div>
 	</div>
 	
 	<div class="siimple-footer siimple-footer--light" align="center">

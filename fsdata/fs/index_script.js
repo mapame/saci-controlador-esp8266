@@ -1,6 +1,9 @@
 var ws;
+var configPageShown = false;
 
 window.onload = function() {
+	document.getElementById("configuration-page").style.display = "none";
+	
 	if(localStorage.getItem("access_key") === null) {
 		document.getElementById("navbar-logged").style.display = "none";
 	} else {
@@ -9,11 +12,15 @@ window.onload = function() {
 	
 	createRawModuleCards();
 	
-	wsOpen();
+	if(location.host.length > 1) {
+		wsOpen();
+	
+		setInterval(testAccessKey, 2000);
+	}
 }
 
 function wsOpen() {
-	if (typeof ws === "undefined" || ws.readyState != 0) {
+	if (typeof ws === "undefined" || ws.readyState != WebSocket.CONNECTING) {
 		ws = new WebSocket("ws://" + location.host);
 		
 		setConnectionStatus("connecting");
@@ -22,7 +29,7 @@ function wsOpen() {
 			setConnectionStatus("connected");
 			
 			if(localStorage.getItem("access_key") !== null) {
-				setTimeout(testAccessKey, 500);
+				testAccessKey();
 			}
 		};
 		
@@ -58,7 +65,7 @@ function wsOpen() {
 				switch(received.error) {
 					case "wrong_password":
 						document.getElementById("login-input").value = "";
-						alert("Senha incorreta!");
+						addPageAlert("warning", "Senha incorreta!");
 						break;
 						
 					case "invalid_key":
@@ -85,6 +92,8 @@ function wsOpen() {
 			if(typeof received.module_data !== "undefined") {
 				let module_card = document.getElementById('diagnose-mode-card-' + received.module_data.address);
 				
+				document.getElementById('diagnose-mode-text').style.display = "none";
+				
 				module_card.style.display = "";
 				
 				module_card.getElementsByClassName("diagnose-mode-card-header")[0].innerHTML = received.module_data.address + " | " + received.module_data.name;
@@ -101,10 +110,27 @@ function wsOpen() {
 						let list_item_value = document.createElement("span");
 						
 						list_item.className = "siimple-list-item";
-						list_item.id = received.module_data.address + "_" + c_n + "_" + v_n;
-						list_item.innerHTML = received.module_data.channels[c_n].name + v_n;
+						/*list_item.id = "port_m" + received.module_data.address + "_c" + c_n + "_v" + v_n;*/
+						list_item.innerHTML = received.module_data.channels[c_n].name + ((received.module_data.channels[c_n].values.length > 1) ? v_n : "");
 						
-						list_item_value.className = "siimple-tag siimple-tag--rounded siimple-tag--primary";
+						if(received.module_data.channels[c_n].writable)
+						
+						list_item_value.className = "siimple-tag siimple-tag--rounded ";
+						
+						if(received.module_data.channels[c_n].writable == "Y") {
+							list_item_value.className += "siimple-tag--primary";
+							list_item_value.style.cursor = "pointer";
+							list_item_value.addEventListener("click", function() {changeChannelValue(received.module_data.channels[c_n].type, received.module_data.address, c_n, v_n);}, false);
+						} else {
+							list_item_value.className += "siimple-tag--light";
+						}
+						
+						list_item_value.dataset.address = received.module_data.address;
+						list_item_value.dataset.channel = c_n;
+						list_item_value.dataset.port = v_n;
+						
+						list_item_value.dataset.value_type = received.module_data.channels[c_n].type;
+						
 						list_item_value.innerHTML = received.module_data.channels[c_n].values[v_n];
 						
 						list_item.appendChild(list_item_value);
@@ -142,6 +168,31 @@ function setConnectionStatus(status) {
 	}
 }
 
+function addPageAlert(type, text) {
+	let newalert = document.createElement("div");
+	
+	newalert.innerHTML = text;
+	
+	newalert.className = "siimple-alert siimple-alert--" + type;
+	
+	newalert.addEventListener("click", function() {this.remove()}, false);
+	
+	document.getElementById('alert-inner-container').appendChild(newalert);
+}
+
+function toggleConfigPage() {
+	
+	if(configPageShown === true) {
+		configPageShown = false;
+		document.getElementById("configuration-page").style.display = "none";
+		document.getElementById("dashboard-page").style.display = "";
+	} else {
+		configPageShown = true;
+		document.getElementById("configuration-page").style.display = "";
+		document.getElementById("dashboard-page").style.display = "none";
+	}
+}
+	
 function login() {
 	var password_field = document.getElementById("login-input");
 	
@@ -163,6 +214,14 @@ function logout() {
 }
 
 function testAccessKey() {
+	if(localStorage.getItem("access_key") === null) {
+		return;
+	}
+	
+	if(typeof ws === "undefined" || ws.readyState != WebSocket.OPEN) {
+		return;
+	}
+	
 	var key = localStorage.getItem("access_key");
 	
 	if(ws.readyState != 1) {
@@ -182,5 +241,13 @@ function createRawModuleCards() {
 		cloned.style.display = "none";
 		
 		document.getElementById("diagnose-mode-card-row").appendChild(cloned);
+	}
+}
+
+function changeChannelValue(vtype, address, channel, port) {
+	let newValue = window.prompt("Informe um valor do tipo " + vtype);
+	
+	if(newValue !== null || newValue !== "") {
+		
 	}
 }
