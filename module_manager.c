@@ -19,11 +19,11 @@ typedef struct {
 	char name[16];
 	unsigned int port_qty;
 	char type;
-	char access;
+	char writable;
 	void *min;
 	void *max;
 	void *values;
-	char *value_update_flags;
+	char *value_update_type;
 } channel_desc_t;
 
 typedef struct {
@@ -78,7 +78,7 @@ static void free_channel_list(channel_desc_t *channel_ptr, unsigned int qty) {
 	for(int ch = 0; ch < qty; ch++) {
 		free(channel_ptr[ch].min);
 		free(channel_ptr[ch].max);
-		free(channel_ptr[ch].value_update_flags);
+		free(channel_ptr[ch].value_update_type);
 		free(channel_ptr[ch].values);
 	}
 	
@@ -98,7 +98,7 @@ int fetch_values(int update_all) {
 	for(int module_addr = 0; module_addr < 32; module_addr++) {
 		for(int chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
 			for(int portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
-				if(update_all == 0 && module_list[module_addr].channels[chn].value_update_flags[portn] == 0)
+				if(update_all == 0 && module_list[module_addr].channels[chn].value_update_type[portn] == 0)
 					continue;
 				
 				sprintf(aux_buffer, "%u:%u", chn, portn);
@@ -148,7 +148,7 @@ int module_get_info(unsigned int module_addr, char *name_buffer, unsigned int bu
 	return channel_qty;
 }
 
-int module_get_channel_info(unsigned int module_addr, unsigned int channeln, char *name_buffer, char *type, char *access) {
+int module_get_channel_info(unsigned int module_addr, unsigned int channeln, char *name_buffer, char *type, char *writable) {
 	int port_qty;
 	
 	if(module_addr >= 32)
@@ -170,8 +170,8 @@ int module_get_channel_info(unsigned int module_addr, unsigned int channeln, cha
 	if(type != NULL)
 		*type = module_list[module_addr].channels[channeln].type;
 	
-	if(access != NULL)
-		*access = module_list[module_addr].channels[channeln].access;
+	if(writable != NULL)
+		*writable = module_list[module_addr].channels[channeln].writable;
 	
 	xSemaphoreGive(module_manager_mutex);
 	
@@ -195,12 +195,12 @@ int module_set_port_enable_update(unsigned int module_addr, unsigned int channel
 		return -4;
 	}
 	
-	if(module_list[module_addr].channels[channeln].value_update_flags == NULL) {
+	if(module_list[module_addr].channels[channeln].value_update_type == NULL) {
 		xSemaphoreGive(module_manager_mutex);
 		return -5;
 	}
 	
-	module_list[module_addr].channels[channeln].value_update_flags[portn] = 1;
+	module_list[module_addr].channels[channeln].value_update_type[portn] = 1;
 	
 	xSemaphoreGive(module_manager_mutex);
 	
@@ -261,7 +261,7 @@ int set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int
 		return -3;
 	}
 	
-	if(module_list[module_addr].channels[channeln].access == 'R') {
+	if(module_list[module_addr].channels[channeln].writable == 'R') {
 		xSemaphoreGive(module_manager_mutex);
 		return -4;
 	}
@@ -447,10 +447,12 @@ int update_module_list() {
 		
 		aux_result = fetch_channel_info(mod_addr, module_list[mod_addr].channels, module_list[mod_addr].channel_qty);
 		
-		if(aux_result == module_list[mod_addr].channel_qty)
+		if(aux_result == module_list[mod_addr].channel_qty) {
 			mod_qty++;
-		else
+		} else {
 			free_channel_list(module_list[mod_addr].channels, aux_result);
+			module_list[mod_addr].channel_qty = 0;
+		}
 	}
 	
 	xSemaphoreGive(module_manager_mutex);
@@ -469,7 +471,7 @@ static int fetch_channel_info(unsigned int module_addr, channel_desc_t *channel_
 	for(ch = 0; ch < qty; ch++) {
 		channel_ptr[ch].min = NULL;
 		channel_ptr[ch].max = NULL;
-		channel_ptr[ch].value_update_flags = NULL;
+		channel_ptr[ch].value_update_type = NULL;
 		channel_ptr[ch].values = NULL;
 	}
 	
@@ -500,19 +502,19 @@ static int fetch_channel_info(unsigned int module_addr, channel_desc_t *channel_
 			break;
 		
 		channel_ptr[ch].type = *(aux_ptrs[2]);
-		channel_ptr[ch].access = *(aux_ptrs[3]);
+		channel_ptr[ch].writable = *(aux_ptrs[3]);
 		
-		if(channel_ptr[ch].access != 'W' && channel_ptr[ch].access != 'R')
+		if(channel_ptr[ch].writable != 'Y' && channel_ptr[ch].writable != 'N')
 			break;
 		
-		channel_ptr[ch].value_update_flags = (char*) malloc(sizeof(char) * channel_ptr[ch].port_qty);
+		channel_ptr[ch].value_update_type = (char*) malloc(sizeof(char) * channel_ptr[ch].port_qty);
 		
-		if(channel_ptr[ch].value_update_flags == NULL) {
+		if(channel_ptr[ch].value_update_type == NULL) {
 			debug("Out of memory!\n");
 			break;
 		}
 		
-		memset(channel_ptr[ch].value_update_flags, 1, sizeof(char) * channel_ptr[ch].port_qty);
+		memset(channel_ptr[ch].value_update_type, 1, sizeof(char) * channel_ptr[ch].port_qty);
 		
 		if(channel_ptr[ch].type == 'B') {
 			channel_ptr[ch].values = malloc(sizeof(char) * channel_ptr[ch].port_qty);
