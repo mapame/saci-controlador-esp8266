@@ -16,6 +16,7 @@
 #include <task.h>
 
 #include "common.h"
+#include "rtc.h"
 #include "module_manager.h"
 #include "comm.h"
 
@@ -68,6 +69,8 @@ void user_init(void) {
 	
 	if(i2c_init(0, SCL_PIN, SDA_PIN, I2C_FREQ_400K))
 		debug("Failed to initialize i2c bus!\n");
+	
+	rtc_init();
 	
 	debug("Firmware version: "FW_VERSION"\n");
 	debug("Build date: "__DATE__" "__TIME__"\n");
