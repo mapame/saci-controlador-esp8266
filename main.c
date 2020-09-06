@@ -30,8 +30,8 @@ void IRAM blink_task(void *pvParameters) {
 	
 	while(1){
 		if(ap_mode) {
-			gpio_write(LED_R_PIN, 1);
-			gpio_write(LED_G_PIN, 1);
+			gpio_write(LED_G_PIN, cycle % 2);
+			gpio_write(LED_R_PIN, (cycle + 1) % 2);
 		} else {
 			if(sdk_wifi_station_get_connect_status() == STATION_GOT_IP) {
 				gpio_write(LED_G_PIN, cycle % 2);
@@ -66,36 +66,48 @@ void user_init(void) {
 	gpio_write(LED_R_PIN, 0);
 	gpio_write(LED_G_PIN, 0);
 	
-	if(i2c_init(I2C_BUS, SCL_PIN, SDA_PIN, I2C_FREQ_500K))
+	if(i2c_init(0, SCL_PIN, SDA_PIN, I2C_FREQ_400K))
 		debug("Failed to initialize i2c bus!\n");
 	
 	debug("Firmware version: "FW_VERSION"\n");
 	debug("Build date: "__DATE__" "__TIME__"\n");
 	
 	vTaskDelay(pdMS_TO_TICKS(100));
-	sysparam_get_string("wifi_ssid", &config_wifi_ssid);
-	sysparam_get_string("wifi_password", &config_wifi_password);
-	sysparam_get_string("wifi_ap_password", &config_wifi_ap_password);
 	
-	for(int i = 0; i < 8; i++) {
+	for(int i = 0; i < 20; i++) {
 		gpio_write(LED_R_PIN, i % 2);
-		gpio_write(LED_G_PIN, i % 2);
+		gpio_write(LED_G_PIN, (i + 1) % 2);
 		
 		button += (gpio_read(BTN_PIN) ? 0 : 1);
 		
-		vTaskDelay(pdMS_TO_TICKS(250));
+		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	
 	gpio_write(LED_R_PIN, 0);
 	gpio_write(LED_G_PIN, 0);
 	
-	if(button > 5 || !config_wifi_ssid || !config_wifi_password || strlen(config_wifi_ssid) < 1 || strlen(config_wifi_password) < 8) {
+	if(button > 8) {
+		while(!gpio_read(BTN_PIN)) {
+			vTaskDelay(pdMS_TO_TICKS(1000));
+			
+			if(button++ == 50) {
+				sysparam_set_string("wifi_password", "\0");
+				sysparam_set_string("wifi_ap_password", "\0");
+				
+				gpio_write(LED_R_PIN, 1);
+				gpio_write(LED_G_PIN, 1);
+			}
+		}
+	}
+	
+	sysparam_get_string("wifi_ssid", &config_wifi_ssid);
+	sysparam_get_string("wifi_password", &config_wifi_password);
+	sysparam_get_string("wifi_ap_password", &config_wifi_ap_password);
+	
+	if(button > 8 || !config_wifi_ssid || !config_wifi_password || strlen(config_wifi_ssid) < 1 || strlen(config_wifi_password) < 1) {
 		struct sdk_softap_config ap_config;
 		struct ip_info ap_ip;
 		ip4_addr_t dhcp_first_ip;
-		
-		gpio_write(LED_R_PIN, 1);
-		gpio_write(LED_G_PIN, 1);
 		
 		ap_mode = 1;
 		
@@ -138,7 +150,10 @@ void user_init(void) {
 	}
 	
 	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 4, NULL);
-	xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 3, NULL);
-	xTaskCreate(&httpd_task, "http_task", 512, NULL, 2, NULL);
+	xTaskCreate(&httpd_task, "http_task", 2048, NULL, 2, NULL);
 	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, NULL);
+	
+	if(ap_mode == 1) {
+		xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 2, NULL);
+	}
 }

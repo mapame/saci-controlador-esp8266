@@ -5,9 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 
-#include <i2c/i2c.h>
-#include <ds3231/ds3231.h>
-
 #include <FreeRTOS.h>
 #include <task.h>
 
@@ -17,12 +14,7 @@
 #include <sysparam.h>
 
 #include "common.h"
-#include "module_manager.h"
-#include "ota.h"
 
-i2c_dev_t rtc_dev = {.addr = DS3231_ADDR, .bus = 0};
-
-ota_info_t ota_information;
 
 static int recv_telnet_line(int socket_fd, char *buf, size_t len) {
 	int num = 0;
@@ -68,7 +60,7 @@ void telnet_task(void *pvParameters) {
 	const struct timeval timeout = {5, 0};
 	
 	struct sockaddr_in client_address;
-	socklen_t client_address_size = sizeof(struct sockaddr_in);
+	socklen_t client_address_size;
 	
 	int len;
 	char *auxptr;
@@ -88,6 +80,8 @@ void telnet_task(void *pvParameters) {
 	listen(main_socket, 2);
 	
 	while(1) {
+		client_address_size = sizeof(struct sockaddr_in);
+		
 		client_socket = accept(main_socket, (struct sockaddr *) &client_address, (socklen_t *) &client_address_size);
 		
 		if(client_socket < 0)
@@ -149,63 +143,6 @@ void telnet_task(void *pvParameters) {
 			} else if(!strcmp(receive_buffer, "compact")) {
 				telnet_send_line(client_socket, "Compacting sysparam data...");
 				sysparam_compact();
-			} else if(!strcmp(receive_buffer, "update")) {
-				int result;
-				
-				result = update_module_list();
-				
-				if(result <= 0) {
-					telnet_send_line(client_socket, "No modules found!");
-					continue;
-				}
-				
-				sprintf(send_buffer, "Found %d modules.", result);
-				telnet_send_line(client_socket, send_buffer);
-				
-			} else if(!strcmp(receive_buffer, "rtc")) {
-					struct tm time;
-					float tempFloat;
-					bool osf;
-					
-					ds3231_getOscillatorStopFlag(&rtc_dev, &osf);
-					ds3231_getTime(&rtc_dev, &time);
-					ds3231_getTempFloat(&rtc_dev, &tempFloat);
-					
-					sprintf(send_buffer, "Temperature: %.1f\nOSF:%c\nTime: %d:%d:%d\nDate: %d-%02d-%02d", tempFloat, (osf ? 'Y' : 'N'),time.tm_hour, time.tm_min, time.tm_sec, time.tm_year + 1900, time.tm_mon + 1, time.tm_mday);
-					
-					telnet_send_line(client_socket, send_buffer);
-					
-			} else if(!strncmp(receive_buffer, "ota", 3)) {
-				char *hash_ptr;
-				
-				hash_ptr = strchr(receive_buffer, ' ');
-				
-				if(hash_ptr == NULL) {
-					telnet_send_line(client_socket, "<hash> must be an MD5 hash in hexadecimal format.");
-					continue;
-				}
-				
-				hash_ptr++;
-				
-				if(strlen(hash_ptr) != 32) {
-					telnet_send_line(client_socket, "<hash> must be an MD5 hash in hexadecimal format.");
-					continue;
-				}
-				
-				strcpy(ota_information.server_address, inet_ntoa(client_address.sin_addr));
-				strncpy(ota_information.file_hash, hash_ptr, 32);
-				
-				sprintf(send_buffer, "Connecting to %s for OTA update.", ota_information.server_address);
-				telnet_send_line(client_socket, send_buffer);
-				
-				if(xTaskCreate(ota_task, "ota_task", 1280, (void*) &ota_information, 3, NULL) != pdPASS) {
-					telnet_send_line(client_socket, "Failed to create OTA task.\n");
-					continue;
-				}
-				
-				close(client_socket);
-				
-				vTaskDelete(NULL);
 			} else if(!strcmp(receive_buffer, "help")) {
 				telnet_send(client_socket,
 					"Available commands:\n"
@@ -213,17 +150,15 @@ void telnet_task(void *pvParameters) {
 					" <key>=<value>    -> Set <key> to text <value>\n"
 					" dump             -> Show all set keys/values pairs\n"
 					" compact          -> Compact sysparam data\n"
-					" update           -> Update module list\r\n"
-					" ota <hash>       -> Update firmware\r\n"
-					" rtc              -> Read RTC data\r\n"
 					" restart          -> Restart device\r\n"
 					" help             -> Show this message\r\n"
 				);
 				
 			} else if(!strcmp(receive_buffer, "restart")) {
-				vTaskDelay(pdMS_TO_TICKS(200));
+				shutdown(client_socket, SHUT_RDWR);
+				vTaskDelay(pdMS_TO_TICKS(500));
 				close(client_socket);
-				vTaskDelay(pdMS_TO_TICKS(1000));
+				vTaskDelay(pdMS_TO_TICKS(500));
 				sdk_system_restart();
 				
 			} else {
