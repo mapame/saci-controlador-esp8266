@@ -41,49 +41,40 @@ SemaphoreHandle_t module_manager_mutex = NULL;
 
 module_desc_t module_list[32];
 unsigned int value_update_period_ms = 1000;
+float mm_cycle_duration;
 int diagnostic_mode = 0;
 
-void module_manager_task(void *pvParameters) {
-	uint32_t time_before, time_after, duration_ms;
+static void module_manager_task(void *pvParameters) {
+	uint32_t start_time, end_time;
+	int cycle_duration[3], cycle_count = 0;
 	
 	module_manager_mutex = xSemaphoreCreateMutex();
 	
 	for(int mod_addr = 0; mod_addr < 32; mod_addr++)
 		module_list[mod_addr].channel_qty = 0;
 	
-	update_module_list();
+	create_module_list();
 	
 	while(1) {
-		time_before = sdk_system_get_time();
-		fetch_values(diagnostic_mode);
-		time_after = sdk_system_get_time();
+		start_time = sdk_system_get_time();
 		
-		if(time_after < time_before)
-			duration_ms = ((((uint32_t)0xFFFFFFFF) - time_before) + time_after + ((uint32_t)1)) / 1000U;
-		else
-			duration_ms = (time_after - time_before) / 1000U;
+		update_values(diagnostic_mode);
 		
-		if(duration_ms < value_update_period_ms)
-			vTaskDelay(pdMS_TO_TICKS(value_update_period_ms - duration_ms));
+		end_time = sdk_system_get_time();
+		
+		cycle_count = (cycle_count + 1) % 3;
+		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
+		mm_cycle_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
+		
+		if(cycle_duration[cycle_count] < value_update_period_ms)
+			vTaskDelay(pdMS_TO_TICKS(value_update_period_ms - cycle_duration[cycle_count]));
 		else
-			vTaskDelay(pdMS_TO_TICKS(50));
+			vTaskDelay(pdMS_TO_TICKS(100));
 		
 	}
 }
 
-static void free_channel_list(channel_desc_t *channel_ptr, unsigned int qty) {
-	if(channel_ptr == NULL)
-		return;
-	
-	for(int ch = 0; ch < qty; ch++) {
-		free(channel_ptr[ch].value_update_type);
-		free(channel_ptr[ch].values);
-	}
-	
-	free(channel_ptr);
-}
-
-int fetch_values(int update_all) {
+static int update_values(int force_read) {
 	char aux_buffer[50];
 	comm_error_t error;
 	
@@ -96,7 +87,7 @@ int fetch_values(int update_all) {
 	for(int module_addr = 0; module_addr < 32; module_addr++) {
 		for(int chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
 			for(int portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
-				//if(update_all == 0 && module_list[module_addr].channels[chn].value_update_type[portn] != 'N')
+				//if(force_read == 0 && module_list[module_addr].channels[chn].value_update_type[portn] != 'N')
 				//	continue;
 				
 				sprintf(aux_buffer, "%u:%u", chn, portn);
@@ -205,7 +196,7 @@ int module_set_port_enable_update(unsigned int module_addr, unsigned int channel
 	return 0;
 }
 
-int get_channel_bounds(unsigned int module_addr, unsigned int channeln, float *min, float *max) {
+int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, float *min, float *max) {
 	if(module_addr >= 32)
 		return -1;
 	
@@ -228,7 +219,7 @@ int get_channel_bounds(unsigned int module_addr, unsigned int channeln, float *m
 	return 0;
 }
 
-int set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
+int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
 	char aux_buffer[50];
 	comm_error_t error;
 	
@@ -285,7 +276,7 @@ int set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int
 	return 0;
 }
 
-int get_port_value_text(unsigned int module_addr, unsigned int channeln, unsigned int portn, char *buffer, unsigned int buffer_len) {
+int module_get_port_value_as_text(unsigned int module_addr, unsigned int channeln, unsigned int portn, char *buffer, unsigned int buffer_len) {
 	if(buffer == NULL || buffer_len < 2)
 		return -1;
 	
@@ -321,7 +312,7 @@ int get_port_value_text(unsigned int module_addr, unsigned int channeln, unsigne
 	return 0;
 }
 
-int get_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, void *value_buffer) {
+int module_get_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, void *value_buffer) {
 	if(value_buffer == NULL)
 		return -1;
 	
@@ -375,7 +366,19 @@ static int parse_content(char *buffer, char *value_ptrs[], unsigned int max) {
 	return max;
 }
 
-int update_module_list() {
+static void free_channel_list(channel_desc_t *channel_ptr, unsigned int qty) {
+	if(channel_ptr == NULL)
+		return;
+	
+	for(int ch = 0; ch < qty; ch++) {
+		free(channel_ptr[ch].value_update_type);
+		free(channel_ptr[ch].values);
+	}
+	
+	free(channel_ptr);
+}
+
+static int create_module_list() {
 	unsigned int mod_addr;
 	comm_error_t error;
 	

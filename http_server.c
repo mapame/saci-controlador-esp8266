@@ -178,7 +178,7 @@ static int create_module_json(unsigned int module_addr, char *buffer, unsigned i
 				continue;
 			}
 			
-			if(get_port_value_text(module_addr, channeln, portn, aux, 20) < 0)
+			if(module_get_port_value_as_text(module_addr, channeln, portn, aux, 20) < 0)
 				return -5;
 			
 			len += snprintf(buffer + len, buffer_len - len, "%s,", aux);
