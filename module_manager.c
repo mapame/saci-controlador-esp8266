@@ -44,36 +44,6 @@ unsigned int value_update_period_ms = 1000;
 float mm_cycle_duration;
 int diagnostic_mode = 0;
 
-static void module_manager_task(void *pvParameters) {
-	uint32_t start_time, end_time;
-	int cycle_duration[3], cycle_count = 0;
-	
-	module_manager_mutex = xSemaphoreCreateMutex();
-	
-	for(int mod_addr = 0; mod_addr < 32; mod_addr++)
-		module_list[mod_addr].channel_qty = 0;
-	
-	create_module_list();
-	
-	while(1) {
-		start_time = sdk_system_get_time();
-		
-		update_values(diagnostic_mode);
-		
-		end_time = sdk_system_get_time();
-		
-		cycle_count = (cycle_count + 1) % 3;
-		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
-		mm_cycle_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
-		
-		if(cycle_duration[cycle_count] < value_update_period_ms)
-			vTaskDelay(pdMS_TO_TICKS(value_update_period_ms - cycle_duration[cycle_count]));
-		else
-			vTaskDelay(pdMS_TO_TICKS(100));
-		
-	}
-}
-
 static int update_values(int force_read) {
 	char aux_buffer[50];
 	comm_error_t error;
@@ -531,4 +501,34 @@ static int fetch_channel_info(unsigned int module_addr, channel_desc_t *channel_
 	}
 	
 	return ch;
+}
+
+void module_manager_task(void *pvParameters) {
+	uint32_t start_time, end_time;
+	int cycle_duration[3], cycle_count = 0;
+	
+	module_manager_mutex = xSemaphoreCreateMutex();
+	
+	for(int mod_addr = 0; mod_addr < 32; mod_addr++)
+		module_list[mod_addr].channel_qty = 0;
+	
+	create_module_list();
+	
+	while(1) {
+		start_time = sdk_system_get_time();
+		
+		update_values(diagnostic_mode);
+		
+		end_time = sdk_system_get_time();
+		
+		cycle_count = (cycle_count + 1) % 3;
+		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
+		mm_cycle_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
+		
+		if(cycle_duration[cycle_count] < value_update_period_ms)
+			vTaskDelay(pdMS_TO_TICKS(value_update_period_ms - cycle_duration[cycle_count]));
+		else
+			vTaskDelay(pdMS_TO_TICKS(100));
+		
+	}
 }

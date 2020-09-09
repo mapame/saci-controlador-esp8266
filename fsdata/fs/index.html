@@ -9,7 +9,7 @@
 </head>
 <body>
 	<div class="siimple-navbar siimple-navbar--large siimple-navbar--dark">
-		<a class="siimple-navbar-title" href=".">S.A.C.I.</a>
+		<a id="page-title" class="siimple-navbar-title" href=".">S.A.C.I.</a>
 		<div class="siimple--float-right" id="navbar-login">
 			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha">
 			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button" onclick="login()">Entrar</a>
@@ -19,11 +19,9 @@
 			<a class="siimple-btn siimple-btn--warning" id="logout-button" onclick="logout()">Sair</a>
 		</div>
 	</div>
-	<div class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--py-0">
-		<div class="siimple-navbar-item" style="cursor: default;"><div id="connection-status" title="..."></div></div>
-		<div id="system-memory" class="siimple-navbar-item siimple--float-right" style="cursor: default;"></div>
-		<div id="system-datetime" class="siimple-navbar-item siimple--float-right" style="cursor: default;">01/01/2020 23:59</div>
-		<div id="system-temperature" class="siimple-navbar-item siimple--float-right" style="cursor: default;">28 °C</div>
+	<div id="secondary-navbar" class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--py-0 siimple--text-bold siimple--text-center">
+		<div id="system-temperature" class="siimple-navbar-item" style="cursor: default;">-- °C</div>
+		<div id="system-time" class="siimple-navbar-item" style="cursor: default;">--/--/---- --:--:--</div>
 	</div>
 	
 	<div class="siimple-content siimple-content--large">
@@ -34,11 +32,7 @@
 		
 		<div id="dashboard-page">
 			<div id="diagnose-dashboard">
-				<div class="siimple-h3">Modo de Diagnostico</div>
-				<div class="siimple-rule"></div>
-				
-				<div class="siimple-h5" id="diagnose-mode-text">Nenhum módulo detectado.</div>
-				
+				<div class="siimple-tip siimple-tip--warning" id="diagnose-mode-text">Nenhum módulo detectado.</div>
 				<div class="siimple-grid">
 					<div id="diagnose-mode-card-row" class="siimple-grid-row">
 					</div>
@@ -47,6 +41,12 @@
 		</div>
 		
 		<div id="configuration-page">
+			<div class="siimple-btn-group">
+				<div class="siimple-btn siimple-btn--primary" onclick="restartSystem()">Reiniciar</div>
+				<div class="siimple-btn siimple-btn--primary" onclick="updateSystemTime()">Ajustar Relógio</div>
+				<div class="siimple-btn siimple-btn--primary" onclick="firmwareUpdate()">Atualizar Firmware</div>
+				<div class="siimple-btn siimple-btn--primary" onclick="showAdvancedSystemStats()">Informações Avançadas</div>
+			</div>
 			<div class="siimple-h3">Configurações</div>
 			<div class="siimple-rule"></div>
 			
@@ -150,22 +150,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
-		
-		<div class="siimple-card-body">
-			<div class="siimple-list siimple--mb-0">
-				<div class="siimple-list-item">
-					<span class="siimple-tag siimple-tag--rounded siimple-tag--primary">0</span>
-				Item 1
-				</div>
-				
-				<div class="siimple-list-item">
-					<div class="siimple-switch siimple--float-right siimple--mr-0">
-						<input type="checkbox" id="mySwitch" checked="">
-						<label for="mySwitch"></label>
-					</div>
-				Item 2
-				</div>
 		</div>
 	</div>
 	</div>
