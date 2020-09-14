@@ -305,8 +305,8 @@ int client_action_ota(char *parameters, char *result_buffer) {
 	char *saveptr = NULL;
 	ota_info http_ota_info;
 	const char default_ota_port[] = "8080";
-	const char default_ota_bin_filename[] = "saci_firmware.bin";
-	const char default_ota_hash_filename[] = "saci_firmware.sha256";
+	const char default_ota_bin_filename[] = "/saci_firmware.bin";
+	const char default_ota_hash_filename[] = "/saci_firmware.sha256";
 	OTA_err err;
 	
 	if(parameters == NULL)
@@ -366,7 +366,7 @@ int client_action_ota(char *parameters, char *result_buffer) {
 				strcpy(result_buffer, "HTTP 404, file not found.");
 				break;
 			default:
-				strcpy(result_buffer, "Unknown error.");
+				sprintf(result_buffer, "Unknown error. (%d)", err);
 				break;
 		}
 	}

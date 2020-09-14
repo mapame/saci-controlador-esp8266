@@ -42,11 +42,15 @@ SemaphoreHandle_t module_manager_mutex = NULL;
 module_desc_t module_list[32];
 unsigned int value_update_period_ms = 1000;
 float mm_cycle_duration;
-int diagnostic_mode = 0;
+int diagnostic_mode = 1;
 
-static int update_values(int force_read) {
+static int update_values() {
+	int module_addr, chn, portn;
 	char aux_buffer[50];
 	comm_error_t error;
+	int skip_channel;
+	int binary_failed;
+	
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -1;
@@ -54,24 +58,56 @@ static int update_values(int force_read) {
 	/* TODO: retry when communication fail */
 	/* TODO: notify when a communication error happens */
 	
-	for(int module_addr = 0; module_addr < 32; module_addr++) {
-		for(int chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
-			for(int portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
-				//if(force_read == 0 && module_list[module_addr].channels[chn].value_update_type[portn] != 'N')
-				//	continue;
+	for(module_addr = 0; module_addr < 32; module_addr++) {
+		for(chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
+			if(module_list[module_addr].channels[chn].type == 'T') /* Do not support reading text from modules */
+				continue;
+			
+			if(!diagnostic_mode) {
+				skip_channel = 1;
 				
-				sprintf(aux_buffer, "%u:%u", chn, portn);
-				comm_send_command('R', module_addr, aux_buffer);
-				error = comm_receive_response('R', aux_buffer, 50);
+				for(portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
+					if(module_list[module_addr].channels[chn].value_update_type[portn] != 'N') {
+						skip_channel = 0;
+						
+						break;
+					}
+				}
 				
-				if(error != COMM_OK)
+				if(skip_channel)
+					continue;
+			}
+			
+			binary_failed = 0;
+			
+			if(module_list[module_addr].channels[chn].type == 'B') {
+				sprintf(aux_buffer, "%u", chn);
+				comm_send_command('B', module_addr, aux_buffer);
+				error = comm_receive_response('B', aux_buffer, 50);
+				
+				if(error != COMM_OK || aux_buffer[0] == '\x15')
+					binary_failed = 1;
+			}
+			
+			for(portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
+				if(!diagnostic_mode && module_list[module_addr].channels[chn].value_update_type[portn] == 'N')
 					continue;
 				
-				if(aux_buffer[0] == '\x15')
-					continue;
+				if(module_list[module_addr].channels[chn].type != 'B' || binary_failed) {
+					sprintf(aux_buffer, "%u:%u", chn, portn);
+					comm_send_command('R', module_addr, aux_buffer);
+					error = comm_receive_response('R', aux_buffer, 50);
+					
+					if(error != COMM_OK)
+						continue;
+					
+					if(aux_buffer[0] == '\x15')
+						continue;
+					
+				}
 				
 				if(module_list[module_addr].channels[chn].type == 'B') {
-					((char*) module_list[module_addr].channels[chn].values)[portn] = (aux_buffer[0] == '0') ? 0 : 1;
+					((char*) module_list[module_addr].channels[chn].values)[portn] = (aux_buffer[binary_failed ? 0 : portn] == '0') ? 0 : 1;
 				} else if(module_list[module_addr].channels[chn].type == 'I') {
 					sscanf(aux_buffer, "%d", &(((int*) module_list[module_addr].channels[chn].values)[portn]));
 				} else if(module_list[module_addr].channels[chn].type == 'F') {
@@ -473,14 +509,16 @@ static int fetch_channel_info(unsigned int module_addr, channel_desc_t *channel_
 		if(sscanf(aux_ptrs[5], "%f", &(channel_ptr[ch].max)) != 1)
 			break;
 		
-		channel_ptr[ch].value_update_type = (char*) malloc(sizeof(char) * channel_ptr[ch].port_qty);
-		
-		if(channel_ptr[ch].value_update_type == NULL) {
-			debug("Out of memory!\n");
-			break;
+		if(channel_ptr[ch].type != 'T') { /* Do not support reading text from modules */
+			channel_ptr[ch].value_update_type = (char*) malloc(sizeof(char) * channel_ptr[ch].port_qty);
+			
+			if(channel_ptr[ch].value_update_type == NULL) {
+				debug("Out of memory!\n");
+				break;
+			}
+			
+			memset(channel_ptr[ch].value_update_type, 'N', sizeof(char) * channel_ptr[ch].port_qty);
 		}
-		
-		memset(channel_ptr[ch].value_update_type, 'N', sizeof(char) * channel_ptr[ch].port_qty);
 		
 		if(channel_ptr[ch].type == 'B') {
 			value_size = sizeof(char);
@@ -517,7 +555,7 @@ void module_manager_task(void *pvParameters) {
 	while(1) {
 		start_time = sdk_system_get_time();
 		
-		update_values(diagnostic_mode);
+		update_values();
 		
 		end_time = sdk_system_get_time();
 		
