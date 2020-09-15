@@ -1,4 +1,4 @@
-#define FW_VERSION "121"
+#define FW_VERSION "122"
 
 //#define DEBUG
 
