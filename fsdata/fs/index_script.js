@@ -135,65 +135,65 @@ function wsOpen() {
 				}
 			}
 			
-			if(typeof received.module_data !== "undefined") {
-				let module_card = document.getElementById('diagnose-mode-card-' + received.module_data.address);
+			if(typeof received.module_info !== "undefined") {
+				let module_card = document.getElementById('diagnose-mode-card-' + received.module_info.address);
 				
-				if(module_card.dataset.modulename == received.module_data.name) {
-					for(let c_n = 0; c_n < received.module_data.channels.length; c_n++) {
-						for(let v_n = 0; v_n < received.module_data.channels[c_n].values.length; v_n++) {
-							
-							let valueElement = document.getElementById("portvalue_m" + received.module_data.address + "_c" + c_n + "_v" + v_n);
-							
-							if(typeof valueElement !== "undefined" && valueElement.innerHTML != received.module_data.channels[c_n].values[v_n]) {
-								valueElement.innerHTML = received.module_data.channels[c_n].values[v_n];
-							}
+				document.getElementById('diagnose-mode-no-module-warning').style.display = "none";
+				
+				module_card.style.display = "";
+				module_card.dataset.modulename = received.module_info.name;
+				
+				module_card.getElementsByClassName("diagnose-mode-card-header")[0].innerHTML = received.module_info.address + " | " + received.module_info.name;
+				
+				let module_card_channel_list = module_card.getElementsByClassName("diagnose-mode-card-channel-list")[0];
+				
+				while (module_card_channel_list.lastChild) {
+					module_card_channel_list.removeChild(module_card_channel_list.lastChild);
+				}
+				
+				for(let c_n = 0; c_n < received.module_info.channels.length; c_n++) {
+					for(let v_n = 0; v_n < received.module_info.channels[c_n].port_qty; v_n++) {
+						let list_item = document.createElement("div");
+						
+						list_item.className = "siimple-list-item";
+						list_item.id = "port_m" + received.module_info.address + "_c" + c_n + "_v" + v_n;
+						list_item.innerHTML = received.module_info.channels[c_n].name + ((received.module_info.channels[c_n].port_qty > 1) ? v_n : "");
+						
+						let list_item_value = document.createElement("span");
+						
+						list_item_value.id = "portvalue_m" + received.module_info.address + "_c" + c_n + "_v" + v_n;
+						list_item_value.className = "siimple-tag siimple-tag--rounded ";
+						
+						list_item_value.dataset.address = received.module_info.address;
+						list_item_value.dataset.channel = c_n;
+						list_item_value.dataset.port = v_n;
+						list_item_value.dataset.vtype = received.module_info.channels[c_n].type;
+						list_item_value.dataset.vmin = received.module_info.channels[c_n].min;
+						list_item_value.dataset.vmax = received.module_info.channels[c_n].max;
+						
+						if(received.module_info.channels[c_n].writable == "Y") {
+							list_item_value.className += "siimple-tag--primary";
+							list_item_value.style.cursor = "pointer";
+							list_item_value.addEventListener("click", function() {changeChannelValue(this);}, false);
+						} else {
+							list_item_value.className += "siimple-tag--light";
 						}
+						
+						list_item.appendChild(list_item_value);
+						
+						module_card_channel_list.appendChild(list_item);
 					}
-				} else {
-					document.getElementById('diagnose-mode-text').style.display = "none";
-					
-					module_card.style.display = "";
-					module_card.dataset.modulename = received.module_data.name;
-					
-					module_card.getElementsByClassName("diagnose-mode-card-header")[0].innerHTML = received.module_data.address + " | " + received.module_data.name;
-					
-					let module_card_channel_list = module_card.getElementsByClassName("diagnose-mode-card-channel-list")[0];
-					
-					while (module_card_channel_list.lastChild) {
-						module_card_channel_list.removeChild(module_card_channel_list.lastChild);
-					}
-					
-					for(let c_n = 0; c_n < received.module_data.channels.length; c_n++) {
-						for(let v_n = 0; v_n < received.module_data.channels[c_n].values.length; v_n++) {
-							let list_item = document.createElement("div");
-							
-							list_item.className = "siimple-list-item";
-							list_item.id = "port_m" + received.module_data.address + "_c" + c_n + "_v" + v_n;
-							list_item.innerHTML = received.module_data.channels[c_n].name + ((received.module_data.channels[c_n].values.length > 1) ? v_n : "");
-							
-							let list_item_value = document.createElement("span");
-							
-							list_item_value.id = "portvalue_m" + received.module_data.address + "_c" + c_n + "_v" + v_n;
-							list_item_value.className = "siimple-tag siimple-tag--rounded ";
-							
-							list_item_value.dataset.address = received.module_data.address;
-							list_item_value.dataset.channel = c_n;
-							list_item_value.dataset.port = v_n;
-							list_item_value.dataset.vtype = received.module_data.channels[c_n].type;
-							
-							if(received.module_data.channels[c_n].writable == "Y") {
-								list_item_value.className += "siimple-tag--primary";
-								list_item_value.style.cursor = "pointer";
-								list_item_value.addEventListener("click", function() {changeChannelValue(this);}, false);
-							} else {
-								list_item_value.className += "siimple-tag--light";
-							}
-							
-							list_item_value.innerHTML = received.module_data.channels[c_n].values[v_n];
-							
-							list_item.appendChild(list_item_value);
-							
-							module_card_channel_list.appendChild(list_item);
+				}
+			}
+			
+			if(typeof received.module_data !== "undefined") {
+				for(let c_n = 0; c_n < received.module_data.values.length; c_n++) {
+					for(let v_n = 0; v_n < received.module_data.values[c_n].length; v_n++) {
+						let receivedValue = received.module_data.values[c_n][v_n];
+						let valueElement = document.getElementById("portvalue_m" + received.module_data.address + "_c" + c_n + "_v" + v_n);
+						
+						if(valueElement !== null && valueElement.innerHTML !== receivedValue) {
+							valueElement.innerHTML = receivedValue;
 						}
 					}
 				}
@@ -286,6 +286,8 @@ function createModuleCards() {
 function changeChannelValue(valueElement) {
 	var key = localStorage.getItem("access_key");
 	var valueType = valueElement.dataset.vtype;
+	var valueMin = valueElement.dataset.vmin;
+	var valueMax = valueElement.dataset.vmax;
 	var actualValue = valueElement.innerText;
 	var newValue;
 	var promptText;
@@ -300,11 +302,11 @@ function changeChannelValue(valueElement) {
 		
 	} else {
 		if(valueType === "I") {
-			promptText = "Valor numérico inteiro entre min e max";
+			promptText = "Valor numérico inteiro entre " + Math.trunc(valueMin) + " e " + Math.trunc(valueMax);
 		} else if(valueType === "F") {
-			promptText = "Valor numérico entre min e max";
+			promptText = "Valor numérico entre " + valueMin + " e " + valueMax;
 		} else if(valueType === "T") {
-			promptText = "Texto com até max caracteres";
+			promptText = "Texto com até " + Math.trunc(valueMax) + " caracteres";
 		}
 		
 		newValue = window.prompt(promptText, actualValue);
@@ -351,7 +353,6 @@ function restartSystem() {
 	}
 	
 	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"RST"}));
-	
 	setTimeout(function(){ document.location.reload(false); }, 3000);
 }
 

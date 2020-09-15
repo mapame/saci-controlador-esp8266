@@ -17,13 +17,18 @@
 #include "module_manager.h"
 #include "mjson.h"
 
+#define MAX_CLIENT_QTY 3
+
 #define CLIENT_ACTION_BUFFER_SIZE 2048
 
 #define KEY_EXPIRATION_TIME 30U * 60U
 
 MessageBufferHandle_t client_action_buffer = NULL;
 
-struct tcp_pcb *client_pcbs[3] = {NULL};
+TaskHandle_t httpd_task_handle = NULL;
+
+struct tcp_pcb *client_pcbs[MAX_CLIENT_QTY] = {NULL};
+int client_is_new[MAX_CLIENT_QTY] = {0};
 int client_qty = 0;
 struct tcp_pcb *logged_client_pcb = NULL;
 
@@ -75,11 +80,11 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 	char response[256];
 	int response_len;
 	
-	for(client_i = 0; client_i < 3; client_i++)
+	for(client_i = 0; client_i < MAX_CLIENT_QTY; client_i++)
 		if(client_pcbs[client_i] == pcb)
 			break;
 	
-	if(client_i == 3)
+	if(client_i == MAX_CLIENT_QTY)
 		return;
 	
 	if(mjson_get_string((char*)data, data_len, "$.op", optxt, 64) <= 0)
@@ -135,19 +140,22 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 }
 
 void websocket_open_cb(struct tcp_pcb *pcb, const char *uri) {
-	if(client_qty >= 3)
-		return;
+	if(client_qty >= MAX_CLIENT_QTY)
+		return; /* TODO: modify the httpd code to allow unwanted connections to be terminated */
 		
-	for(int i = 0; i < 3; i++) {
+	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
 		if(client_pcbs[i] == NULL) {
 			client_pcbs[i] = pcb;
+			client_is_new[i] = 1;
 			client_qty++;
 			break;
 		}
 	}
+	
+	xTaskNotifyGive(httpd_task_handle);
 }
 
-static int create_module_json(unsigned int module_addr, char *buffer, unsigned int buffer_len) {
+static int create_module_info_json(unsigned int module_addr, char *buffer, unsigned int buffer_len) {
 	char aux[20];
 	unsigned int len;
 	
@@ -155,6 +163,7 @@ static int create_module_json(unsigned int module_addr, char *buffer, unsigned i
 	char type;
 	char writable;
 	int port_qty;
+	float min, max;
 	
 	if(buffer == NULL || buffer_len < 2)
 		return -1;
@@ -167,39 +176,84 @@ static int create_module_json(unsigned int module_addr, char *buffer, unsigned i
 	len = snprintf(buffer, buffer_len, "{\"address\":%u,\"name\":\"%s\",\"channels\":[", module_addr, aux);
 	
 	for(unsigned int channeln = 0; channeln < channel_qty; channeln++) {
+		if(len >= buffer_len)
+			return -3;
+		
 		port_qty = module_get_channel_info(module_addr, channeln, aux, &type, &writable);
+		
+		if(port_qty <= 0)
+			return -4;
+		
+		if(module_get_channel_bounds(module_addr, channeln, &min, &max))
+			return -5;
+		
+		len += snprintf(buffer + len, buffer_len - len, "{\"name\":\"%s\",\"type\":\"%c\",\"port_qty\":\"%d\",\"writable\":\"%c\",\"min\":%.4f,\"max\":%.4f},", aux, type, port_qty, writable, min, max);
+	}
+	
+	if(len >= buffer_len)
+		return -3;
+	
+	len--; // Remove last comma
+	
+	if(len + 3 >= buffer_len)
+		return -3;
+	
+	strcpy(buffer + len, "]}");
+	len += 2;
+	
+	return len;
+}
+
+static int create_module_data_json(unsigned int module_addr, char *buffer, unsigned int buffer_len) {
+	char aux[20];
+	unsigned int len;
+	
+	int channel_qty;
+	char type;
+	int port_qty;
+	
+	if(buffer == NULL || buffer_len < 2)
+		return -1;
+	
+	channel_qty = module_get_info(module_addr, aux, 20);
+	
+	if(channel_qty <= 0)
+		return -2;
+	
+	len = snprintf(buffer, buffer_len, "{\"address\":%u,\"values\":[", module_addr);
+	
+	for(unsigned int channeln = 0; channeln < channel_qty; channeln++) {
+		if(len >= buffer_len)
+			return -4;
+			
+		port_qty = module_get_channel_info(module_addr, channeln, aux, &type, NULL);
 		
 		if(port_qty <= 0)
 			return -3;
 		
-		if(len >= buffer_len)
-			return -4;
-		
-		len += snprintf(buffer + len, buffer_len - len, "{\"name\":\"%s\",\"type\":\"%c\",\"writable\":\"%c\",\"values\":[", aux, type, writable);
+		buffer[len++] = '[';
 		
 		for(unsigned int portn = 0; portn < port_qty; portn++) {
-			if(len + 4 >= buffer_len)
+			if(len >= buffer_len)
 				return -4;
 			
 			if(type == 'T') {
-				strcpy(buffer + len, "\"\",");
-				len += 3;
-				continue;
+				strcpy(aux, "\"TXT\"");
+			} else {
+				if(module_get_port_value_as_text(module_addr, channeln, portn, aux, 20) < 0)
+					return -5;
 			}
-			
-			if(module_get_port_value_as_text(module_addr, channeln, portn, aux, 20) < 0)
-				return -5;
 			
 			len += snprintf(buffer + len, buffer_len - len, "%s,", aux);
 		}
 		
 		len--; // Remove last comma
 		
-		if(len + 4 >= buffer_len)
+		if(len + 3 >= buffer_len)
 			return -4;
 		
-		strcpy(buffer + len, "]},");
-		len += 3;
+		strcpy(buffer + len, "],");
+		len += 2;
 	}
 	
 	len--; // Remove last comma
@@ -374,11 +428,14 @@ int client_action_ota(char *parameters, char *result_buffer) {
 	return (err == OTA_UPDATE_DONE) ? 0 : -3;
 }
 
-static int send_all_clients(const char *buffer, unsigned int buffer_len) {
+static int send_all_clients(int new_clients_only, const char *buffer, unsigned int buffer_len) {
 	err_t result;
 	
-	for(int i = 0; i < 3; i++) {
+	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
 		if(client_pcbs[i] == NULL || TCP_STATE_IS_CLOSING(client_pcbs[i]->state))
+			continue;
+		
+		if(client_is_new[i] != new_clients_only)
 			continue;
 		
 		LOCK_TCPIP_CORE();
@@ -416,7 +473,11 @@ void httpd_task(void *pvParameters) {
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
 	
+	int time_to_wait;
+	
 	char aux[64];
+	
+	httpd_task_handle = xTaskGetCurrentTaskHandle();
 	
 	client_action_buffer = xMessageBufferCreate(CLIENT_ACTION_BUFFER_SIZE);
 	
@@ -429,7 +490,6 @@ void httpd_task(void *pvParameters) {
 		time_t rtc_time;
 		float rtc_temperature;
 		
-		vTaskDelay(pdMS_TO_TICKS(1000));
 		
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
 			continue;
@@ -440,9 +500,10 @@ void httpd_task(void *pvParameters) {
 		if(logged_client_pcb != NULL && TCP_STATE_IS_CLOSING(logged_client_pcb->state))
 			logged_client_pcb = NULL;
 		
-		for(int i = 0; i < 3; i++)
+		for(int i = 0; i < MAX_CLIENT_QTY; i++)
 			if(client_pcbs[i] != NULL && TCP_STATE_IS_CLOSING(client_pcbs[i]->state)) {
 				client_pcbs[i] = NULL;
+				client_is_new[i] = 0;
 				client_qty--;
 			}
 		
@@ -473,6 +534,7 @@ void httpd_task(void *pvParameters) {
 		}
 		
 		if(client_qty == 0) {
+			vTaskDelay(pdMS_TO_TICKS(1000));
 			continue;
 		}
 		
@@ -481,29 +543,57 @@ void httpd_task(void *pvParameters) {
 		
 		response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
 		
-		send_all_clients(response_buffer, response_len);
+		send_all_clients(0, response_buffer, response_len);
 		
 		for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
 			response_len = sprintf(response_buffer, "{\"module_data\":");
 			
-			result = create_module_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
+			result = create_module_data_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
 			
 			if(result <= 0)
 				continue;
 			
 			response_len += result;
 			
-			if(response_len + 2 >= sizeof(response_buffer))
+			if(response_len >= sizeof(response_buffer))
 				continue;
 			
-			strcpy(response_buffer + response_len, "}");
-			response_len += 1;
+			response_buffer[response_len++] = '}';
 			
-			send_all_clients(response_buffer, response_len);
+			send_all_clients(0, response_buffer, response_len);
 		}
 		
 		end_time = sdk_system_get_time();
 		cycle_count = (cycle_count + 1) % 3;
 		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
+		
+		time_to_wait = 1000 - cycle_duration[cycle_count];
+		
+		if(time_to_wait < 200)
+			time_to_wait = 200;
+		
+		if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(time_to_wait)) != 0) {
+			/* If we received a notification that means there is a new user connected */
+			for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
+				response_len = sprintf(response_buffer, "{\"module_info\":");
+				
+				result = create_module_info_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
+				
+				if(result <= 0)
+					continue;
+				
+				response_len += result;
+				
+				if(response_len >= sizeof(response_buffer))
+					continue;
+				
+				response_buffer[response_len++] = '}';
+				
+				send_all_clients(1, response_buffer, response_len);
+			}
+			
+			for(int i = 0; i < MAX_CLIENT_QTY; i++)
+				client_is_new[i] = 0;
+		}
 	}
 }
