@@ -70,8 +70,8 @@ function wsOpen() {
 			if(typeof received.server_notification !== "undefined") {
 				switch(received.server_notification) {
 					case "restart":
-						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página em breve.");
-						setTimeout(function(){ document.location.reload(false); }, 3000);
+						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página automaticamente em 5 segundos...");
+						setTimeout(function(){ document.location.reload(false); }, 5000);
 						break;
 						
 					default:
@@ -200,14 +200,17 @@ function wsOpen() {
 				}
 			}
 			
-			if(typeof received.module_data !== "undefined") {
-				for(let c_n = 0; c_n < received.module_data.values.length; c_n++) {
-					for(let v_n = 0; v_n < received.module_data.values[c_n].length; v_n++) {
-						let receivedValue = received.module_data.values[c_n][v_n];
-						let valueElement = document.getElementById("portvalue_m" + received.module_data.address + "_c" + c_n + "_v" + v_n);
-						
-						if(valueElement !== null && valueElement.innerHTML !== receivedValue) {
-							valueElement.innerHTML = receivedValue;
+			if(typeof received.module_data !== "undefined" && typeof received.module_data.length !== "undefined") {
+				for(let m_n = 0; m_n < received.module_data.length; m_n++) {
+					for(let c_n = 0; c_n < received.module_data[m_n].values.length; c_n++) {
+						for(let v_n = 0; v_n < received.module_data[m_n].values[c_n].length; v_n++) {
+							
+							let receivedValue = received.module_data[m_n].values[c_n][v_n];
+							let valueElement = document.getElementById("portvalue_m" + received.module_data[m_n].address + "_c" + c_n + "_v" + v_n);
+							
+							if(valueElement !== null && valueElement.innerHTML !== receivedValue) {
+								valueElement.innerHTML = receivedValue;
+							}
 						}
 					}
 				}

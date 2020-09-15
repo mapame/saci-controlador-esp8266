@@ -4,6 +4,7 @@
 
 #alert-outer-container {
 	position: relative;
+	z-index: 9999;
 	height: 0;
 	top: -20px;
 }

@@ -72,6 +72,43 @@ static int check_key(const char *key_text) {
 	return 0;
 }
 
+static int websocket_all_clients_write(int new_clients_only, const char *buffer, unsigned int buffer_len) {
+	err_t result;
+	
+	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
+		if(client_pcbs[i] == NULL || TCP_STATE_IS_CLOSING(client_pcbs[i]->state))
+			continue;
+		
+		if(client_is_new[i] != new_clients_only)
+			continue;
+		
+		LOCK_TCPIP_CORE();
+		result = websocket_write(client_pcbs[i], (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
+		UNLOCK_TCPIP_CORE();
+		
+		if(result != ERR_OK)
+			return -1;
+	}
+	
+	return 0;
+}
+
+static int websocket_logged_client_write(const char *buffer, unsigned int buffer_len) {
+	err_t result;
+	
+	if(logged_client_pcb == NULL || TCP_STATE_IS_CLOSING(logged_client_pcb->state))
+		return -2;
+		
+	LOCK_TCPIP_CORE();
+	result = websocket_write(logged_client_pcb, (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
+	UNLOCK_TCPIP_CORE();
+	
+	if(result != ERR_OK)
+		return -1;
+	
+	return 0;
+}
+
 void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
 	int client_i;
 	char optxt[32];
@@ -267,6 +304,51 @@ static int create_module_data_json(unsigned int module_addr, char *buffer, unsig
 	return len;
 }
 
+static void send_module_data(char *buffer, unsigned int buffer_len) {
+	int result;
+	int response_len;
+	
+	unsigned int module_addr = 0;
+	
+	while(module_addr < 32) {
+		response_len = snprintf(buffer, buffer_len, "{\"module_data\":[");
+		
+		if(response_len >= buffer_len)
+			return;
+		
+		while(module_addr < 32) {
+			
+			result = create_module_data_json(module_addr, buffer + response_len, buffer_len - response_len);
+			
+			if(result <= 0) {
+				module_addr++;
+				continue;
+			}
+			
+			if(response_len + result + 2 > buffer_len)
+				break;
+			
+			response_len += result;
+			
+			buffer[response_len++] = ',';
+			
+			module_addr++;
+		}
+		
+		if(buffer[response_len] == '[')
+			return;
+		
+		response_len--; // Remove last comma
+		
+		buffer[response_len++] = ']';
+		buffer[response_len++] = '}';
+		
+		websocket_all_clients_write(0, buffer, response_len);
+	}
+	
+	return;
+}
+
 int client_action_module_write(char *parameters) {
 	char *saveptr = NULL;
 	char *param_ptrs[4];
@@ -428,45 +510,9 @@ int client_action_ota(char *parameters, char *result_buffer) {
 	return (err == OTA_UPDATE_DONE) ? 0 : -3;
 }
 
-static int send_all_clients(int new_clients_only, const char *buffer, unsigned int buffer_len) {
-	err_t result;
-	
-	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
-		if(client_pcbs[i] == NULL || TCP_STATE_IS_CLOSING(client_pcbs[i]->state))
-			continue;
-		
-		if(client_is_new[i] != new_clients_only)
-			continue;
-		
-		LOCK_TCPIP_CORE();
-		result = websocket_write(client_pcbs[i], (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
-		UNLOCK_TCPIP_CORE();
-		
-		if(result != ERR_OK)
-			return -1;
-	}
-	
-	return 0;
-}
-
-static int send_logged_client(const char *buffer, unsigned int buffer_len) {
-	err_t result;
-	
-	if(logged_client_pcb == NULL || TCP_STATE_IS_CLOSING(logged_client_pcb->state))
-		return -2;
-		
-	LOCK_TCPIP_CORE();
-	result = websocket_write(logged_client_pcb, (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
-	UNLOCK_TCPIP_CORE();
-	
-	if(result != ERR_OK)
-		return -1;
-	
-	return 0;
-}
-
 void httpd_task(void *pvParameters) {
 	int result;
+	
 	char response_buffer[1024];
 	unsigned int response_len;
 	
@@ -510,9 +556,10 @@ void httpd_task(void *pvParameters) {
 			xMessageBufferReceive(client_action_buffer, (void*) &aux, sizeof(aux), 0);
 			
 			if(!strncmp(aux, "RST", 3)) {
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"");
-				send_all_clients(0, response_buffer, response_len);
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"}");
+				websocket_all_clients_write(0, response_buffer, response_len);
 				
+				vTaskDelay(pdMS_TO_TICKS(2000));
 				sdk_system_restart();
 			} else if(!strncmp(aux, "MWR:", 4)) {
 				client_action_module_write(aux + 4);
@@ -523,7 +570,7 @@ void httpd_task(void *pvParameters) {
 				
 				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"http_cycle_duration\":%.2f,\"mm_cycle_duration\":%.2f}}", FW_VERSION, (unsigned int) xPortGetFreeHeapSize(), avg_duration, mm_cycle_duration);
 				
-				send_logged_client(response_buffer, response_len);
+				websocket_logged_client_write(response_buffer, response_len);
 			} else if(!strncmp(aux, "OTA:", 4)) {
 				char result_txt[64];
 				
@@ -531,12 +578,12 @@ void httpd_task(void *pvParameters) {
 				
 				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"page_alert\":{\"type\":\"primary\",\"message\":\"%s\"}}", result_txt);
 				
-				send_logged_client(response_buffer, response_len);
+				websocket_logged_client_write(response_buffer, response_len);
 			}
 		}
 		
 		if(client_qty == 0) {
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(1500));
 			continue;
 		}
 		
@@ -545,25 +592,9 @@ void httpd_task(void *pvParameters) {
 		
 		response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
 		
-		send_all_clients(0, response_buffer, response_len);
+		websocket_all_clients_write(0, response_buffer, response_len);
 		
-		for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
-			response_len = sprintf(response_buffer, "{\"module_data\":");
-			
-			result = create_module_data_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
-			
-			if(result <= 0)
-				continue;
-			
-			response_len += result;
-			
-			if(response_len >= sizeof(response_buffer))
-				continue;
-			
-			response_buffer[response_len++] = '}';
-			
-			send_all_clients(0, response_buffer, response_len);
-		}
+		send_module_data(response_buffer, sizeof(response_buffer));
 		
 		end_time = sdk_system_get_time();
 		cycle_count = (cycle_count + 1) % 3;
@@ -591,7 +622,7 @@ void httpd_task(void *pvParameters) {
 				
 				response_buffer[response_len++] = '}';
 				
-				send_all_clients(1, response_buffer, response_len);
+				websocket_all_clients_write(1, response_buffer, response_len);
 			}
 			
 			for(int i = 0; i < MAX_CLIENT_QTY; i++)
