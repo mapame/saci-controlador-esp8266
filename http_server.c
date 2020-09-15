@@ -490,7 +490,6 @@ void httpd_task(void *pvParameters) {
 		time_t rtc_time;
 		float rtc_temperature;
 		
-		
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
 			continue;
 		}
@@ -511,6 +510,9 @@ void httpd_task(void *pvParameters) {
 			xMessageBufferReceive(client_action_buffer, (void*) &aux, sizeof(aux), 0);
 			
 			if(!strncmp(aux, "RST", 3)) {
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"");
+				send_all_clients(0, response_buffer, response_len);
+				
 				sdk_system_restart();
 			} else if(!strncmp(aux, "MWR:", 4)) {
 				client_action_module_write(aux + 4);

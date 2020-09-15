@@ -67,6 +67,20 @@ function wsOpen() {
 				addPageAlert(received.page_alert.type, received.page_alert.message);
 			}
 			
+			if(typeof received.server_notification !== "undefined") {
+				switch(received.server_notification) {
+					case "restart":
+						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página em breve.");
+						setTimeout(function(){ document.location.reload(false); }, 3000);
+						break;
+						
+					default:
+						console.log("Received unkown server notification: " + received.server_notification);
+						
+						break;
+				}
+			}
+			
 			if(typeof received.error !== "undefined") {
 				switch(received.error) {
 					case "wrong_password":
@@ -353,7 +367,6 @@ function restartSystem() {
 	}
 	
 	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"RST"}));
-	setTimeout(function(){ document.location.reload(false); }, 3000);
 }
 
 function firmwareUpdate() {
