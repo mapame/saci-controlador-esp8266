@@ -537,6 +537,7 @@ void httpd_task(void *pvParameters) {
 		float rtc_temperature;
 		
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
+			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
 		
@@ -624,6 +625,8 @@ void httpd_task(void *pvParameters) {
 				
 				websocket_all_clients_write(1, response_buffer, response_len);
 			}
+			
+			
 			
 			for(int i = 0; i < MAX_CLIENT_QTY; i++)
 				client_is_new[i] = 0;
