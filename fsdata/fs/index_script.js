@@ -4,35 +4,33 @@ var configPageShown = false;
 var timeAlertShown = false;
 
 window.onload = function() {
-	document.getElementById("configuration-page").style.display = "none";
-	
 	if(localStorage.getItem("access_key") === null) {
-		document.getElementById("navbar-logged").style.display = "none";
-	} else {
-		document.getElementById("navbar-login").style.display = "none";
+		document.getElementById("navbar-login").style.display = "";
 	}
 	
 	createModuleCards();
 	
-	if(location.host.length > 1) {
-		wsOpen();
-	
-		setInterval(testAccessKey, 5000);
-	}
+	wsOpen();
 }
 
 function wsOpen() {
 	if (typeof ws === "undefined" || ws.readyState != WebSocket.CONNECTING) {
+		if(location.host.length < 8) {
+			return;
+		}
+		
 		ws = new WebSocket("ws://" + location.host);
 		
 		secondaryNavbarChangeType("light");
 		
 		ws.onopen = function(evt) {
-			if(localStorage.getItem("access_key") !== null) {
-				testAccessKey();
-			}
+			testAccessKey();
+			setInterval(testAccessKey, 5000);
 			
 			receiveTimeoutInterval = setTimeout(function(){ secondaryNavbarChangeType("warning"); }, 4000);
+			
+			document.getElementById("loading-spinner").style.display = "none";
+			document.getElementById("dashboard-page").style.display = "";
 		};
 		
 		ws.onerror = function(evt) {
@@ -69,6 +67,11 @@ function wsOpen() {
 			
 			if(typeof received.server_notification !== "undefined") {
 				switch(received.server_notification) {
+					case "key_ok":
+						document.getElementById("navbar-login").style.display = "none";
+						document.getElementById("navbar-logged").style.display = "";
+						break;
+					
 					case "restart":
 						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página automaticamente em 5 segundos...");
 						setTimeout(function(){ document.location.reload(false); }, 5000);
@@ -89,10 +92,15 @@ function wsOpen() {
 						break;
 						
 					case "invalid_key":
+						localStorage.removeItem("access_key");
+						
 						document.getElementById("navbar-login").style.display = "";
 						document.getElementById("navbar-logged").style.display = "none";
 						
-						localStorage.removeItem("access_key");
+						if(configPageShown === true) {
+							toggleConfigPage();
+						}
+						
 						break;
 						
 					default:
@@ -130,22 +138,25 @@ function wsOpen() {
 				let localDate = new Date();
 				let timeElement = document.getElementById('system-time');
 				
-				document.getElementById('system-time').innerHTML = moduleDate.getDate().toString().padStart(2, "0") + "/" + (moduleDate.getMonth() + 1).toString().padStart(2, "0") + "/" + moduleDate.getFullYear() + " " + moduleDate.getHours().toString().padStart(2, "0") + ":" + moduleDate.getMinutes().toString().padStart(2, "0") + ":" + moduleDate.getSeconds().toString().padStart(2, "0");
-				
 				if(received.time == 0) {
+					timeElement.innerHTML = "--/--/---- --:--:--";
 					timeElement.style.color = "red";
-					timeElement.title = "O relógio do sistema parou.";
+					timeElement.title = "O relógio do sistema está parado.";
 					
 					if(timeAlertShown == false) {
 						addPageAlert("error", "O relógio interno parou, pode ser necessário fazer a substituição da bateria (CR2032) no módulo central. Se a bateria já foi substituída, faça login e então atualize o relógio.");
 						
 						timeAlertShown = true;
 					}
-				} else if(Math.abs(localDate.getTime() - moduleDate.getTime()) > 30 * 1000) {
-					timeElement.style.color = "orange";
-					timeElement.title = "O relógio do sistema não corresponde com o horário do seu dispositivo.";
 				} else {
-					timeElement.style.color = "";
+					timeElement.innerHTML = moduleDate.getDate().toString().padStart(2, "0") + "/" + (moduleDate.getMonth() + 1).toString().padStart(2, "0") + "/" + moduleDate.getFullYear() + " " + moduleDate.getHours().toString().padStart(2, "0") + ":" + moduleDate.getMinutes().toString().padStart(2, "0") + ":" + moduleDate.getSeconds().toString().padStart(2, "0");
+					
+					if(Math.abs(localDate.getTime() - moduleDate.getTime()) > 30 * 1000) {
+						timeElement.style.color = "orange";
+						timeElement.title = "O relógio do sistema pode estar incorreto.";
+					} else {
+						timeElement.style.color = "";
+					}
 				}
 			}
 			
@@ -284,7 +295,7 @@ function testAccessKey() {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"op":"nop","key":key}));
+	ws.send(JSON.stringify({"op":"test-key","key":key}));
 }
 
 function createModuleCards() {

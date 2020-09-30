@@ -170,8 +170,9 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 			return;
 		
 		xMessageBufferSend(client_action_buffer, (void*) &aux, strlen(aux) + 1, pdMS_TO_TICKS(200));
-	} else if(!strcmp(optxt, "nop")) {
-		return;
+	} else if(!strcmp(optxt, "test-key")) {
+		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"key_ok\"}");
+		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
 	}
 	
 }
