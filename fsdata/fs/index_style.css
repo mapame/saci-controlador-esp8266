@@ -4,21 +4,24 @@
 
 #alert-outer-container {
 	position: relative;
-	z-index: 9999;
 	height: 0;
-	top: 10px;
-	padding-left: calc(50% - 700px / 2);
-	padding-right: calc(50% - 700px / 2);
 }
 
 #alert-inner-container {
 	position: absolute;
-	max-width: 700px;
-	opacity: 0.9;
+	top: 10px;
+	left: 0px;
+	width: 100%;
+	pointer-events: none;
 }
 
 .siimple-alert {
+	z-index: 9999;
 	overflow-wrap: break-word;
+	max-width: 700px;
+	margin: 0 auto;
+	opacity: 0.9;
+	pointer-events: auto;
 }
 
 .config-page-btns {

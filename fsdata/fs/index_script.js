@@ -590,7 +590,7 @@ function saveConfig() {
 		sentValues++;
 	}
 	
-	if(sentValues > 1) {
+	if(sentValues > 0) {
 		document.getElementById("loading-modal").style.display = "";
 		setTimeout(function(){ document.getElementById("loading-modal").style.display = "none"; }, 3000);
 	}
