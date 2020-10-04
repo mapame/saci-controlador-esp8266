@@ -1,5 +1,7 @@
 var ws;
 var receiveTimeoutInterval;
+var configInfoRequested = false;
+var configPageDone = false;
 var configPageShown = false;
 var timeAlertShown = false;
 
@@ -29,7 +31,6 @@ function wsOpen() {
 			
 			receiveTimeoutInterval = setTimeout(function(){ secondaryNavbarChangeType("warning"); }, 4000);
 			
-			document.getElementById("loading-spinner").style.display = "none";
 			document.getElementById("dashboard-page").style.display = "";
 		};
 		
@@ -39,6 +40,15 @@ function wsOpen() {
 		};
 		
 		ws.onclose = function(evt) {
+			clearTimeout(receiveTimeoutInterval);
+			
+			document.getElementById("navbar-login").style.display = "none";
+			document.getElementById("navbar-logged").style.display = "none";
+			
+			if(configPageShown === true) {
+				toggleConfigPage();
+			}
+			
 			secondaryNavbarChangeType("error");
 			
 			window.scrollTo(0, 0);
@@ -55,6 +65,8 @@ function wsOpen() {
 				document.getElementById("navbar-logged").style.display = "";
 				
 				localStorage.setItem("access_key", received.key);
+				
+				requestConfigInfo();
 			}
 			
 			if(typeof received.debug_message !== "undefined") {
@@ -67,9 +79,21 @@ function wsOpen() {
 			
 			if(typeof received.server_notification !== "undefined") {
 				switch(received.server_notification) {
+					case "loading_done":
+						document.getElementById("loading-modal").style.display = "none";
+						break;
+						
+					case "config_info_done":
+						configPageDone = true;
+						document.getElementById("loading-modal").style.display = "none";
+						break;
+						
 					case "key_ok":
 						document.getElementById("navbar-login").style.display = "none";
 						document.getElementById("navbar-logged").style.display = "";
+						
+						requestConfigInfo();
+						
 						break;
 					
 					case "restart":
@@ -227,6 +251,81 @@ function wsOpen() {
 				}
 			}
 			
+			if(typeof received.config_info !== "undefined") {
+				let form = document.getElementById("custom-configuration-form");
+				
+				let input_element = document.getElementById("configuration_input_" + received.config_info.name);
+				
+				if(input_element === null) {
+					let new_label = document.createElement("div");
+					let new_field = document.createElement("div");
+					
+					input_element = document.createElement("input");
+					
+					input_element.id = "configuration_input_" + received.config_info.name;
+					
+					new_field.className = "siimple-field";
+					new_label.className = "siimple-field-label";
+					
+					new_label.innerText = received.config_info.fname;
+					
+					new_field.appendChild(new_label);
+					
+					input_element.className = "configuration-input";
+					
+					if(received.config_info.type === "B") {
+						let switch_div = document.createElement("div");
+						let switch_label = document.createElement("label");
+						
+						input_element.type = "checkbox";
+						
+						input_element.onchange = function() { this.value = (this.checked ? 1 : 0); }
+						
+						switch_label.htmlFor = input_element.id;
+						
+						switch_div.className = "siimple-switch";
+						
+						switch_div.appendChild(input_element);
+						switch_div.appendChild(switch_label);
+						
+						new_field.appendChild(switch_div);
+					} else {
+						input_element.type = "text";
+						
+						input_element.classList.add("siimple-input");
+						input_element.classList.add("siimple-input--fluid");
+						
+						new_field.appendChild(input_element);
+					}
+					
+					form.appendChild(new_field);
+				}
+				
+				if(received.config_info.type !== "B") {
+					input_element.style.borderColor = "red";
+					input_element.style.borderStyle = "solid";
+					input_element.style.borderWidth = "0px";
+				}
+				
+				input_element.dataset.config_name = received.config_info.name;
+				input_element.dataset.config_type = received.config_info.type;
+				input_element.dataset.config_min = received.config_info.min;
+				input_element.dataset.config_max = received.config_info.max;
+			}
+			
+			if(typeof received.config_data !== "undefined") {
+				let input_element = document.getElementById("configuration_input_" + received.config_data.name);
+				
+				if(input_element !== null) {
+					input_element.dataset.config_value = received.config_data.value;
+					input_element.value = received.config_data.value;
+					
+					if(input_element.dataset.config_type == "B") {
+						input_element.checked = (received.config_data.value === "1");
+					}
+				}
+			}
+			
 			receiveTimeoutInterval = setTimeout(function(){ secondaryNavbarChangeType("warning"); }, 5000);
 		};
 	}
@@ -261,6 +360,10 @@ function toggleConfigPage() {
 		configPageShown = true;
 		document.getElementById("configuration-page").style.display = "";
 		document.getElementById("dashboard-page").style.display = "none";
+		
+		if(configPageDone === false) {
+			document.getElementById("loading-modal").style.display = "";
+		}
 	}
 }
 	
@@ -339,7 +442,7 @@ function changeChannelValue(valueElement) {
 		
 		newValue = window.prompt(promptText, actualValue);
 		
-		if(newValue === null && newValue === "") {
+		if(newValue === null || newValue === "") {
 			return;
 		}
 	}
@@ -380,7 +483,7 @@ function restartSystem() {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"RST"}));
+	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"RST:"}));
 }
 
 function firmwareUpdate() {
@@ -407,12 +510,88 @@ function firmwareUpdate() {
 	clearTimeout(receiveTimeoutInterval);
 }
 
-function showAdvancedSystemStats() {
+function showSystemStats() {
 	var key = localStorage.getItem("access_key");
 	
 	if(key === null) {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"SYS"}));
+	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"SYSS:"}));
+}
+
+function requestConfigInfo() {
+	var key = localStorage.getItem("access_key");
+	
+	if(key === null) {
+		return;
+	}
+	
+	if(configInfoRequested === true) {
+		return;
+	}
+	
+	configInfoRequested = true;
+	
+	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"CFGI:"}));
+}
+
+function saveConfig() {
+	var key = localStorage.getItem("access_key");
+	var input_elements = document.getElementsByClassName("configuration-input");
+	var invalidValues = 0;
+	var sentValues = 0;
+	
+	if(key === null) {
+		return;
+	}
+	
+	if(configPageDone === false) {
+		return;
+	}
+	
+	for(let i_n = 0; i_n < input_elements.length; i_n++) {
+		let valueType = input_elements[i_n].dataset.config_type;
+		let valueAsNumber = parseFloat(input_elements[i_n].value);
+		let valueToCompare;
+		
+		if(valueType === "B" || input_elements[i_n].dataset.config_value === input_elements[i_n].value) {
+			continue;
+		}
+		
+		valueToCompare = (valueType === "T") ? (new Blob([input_elements[i_n].value]).size) : input_elements[i_n].value;
+		
+		if(((valueType === "I" || valueType === "F") && (isNaN(valueAsNumber) === true || valueAsNumber != input_elements[i_n].value)) || valueToCompare > input_elements[i_n].dataset.config_max || valueToCompare < input_elements[i_n].dataset.config_min) {
+			invalidValues++;
+			
+			input_elements[i_n].style.borderWidth = "1px";
+		}
+	}
+	
+	if(invalidValues > 0) {
+		addPageAlert("error", "Existem campos de configuração estão com valores invalidos. (Quantidade: " + invalidValues + ")");
+		
+		return;
+	}
+	
+	for(let i_n = 0; i_n < input_elements.length; i_n++) {
+		let parameterString;
+		
+		input_elements[i_n].style.borderWidth = "0px";
+		
+		if(input_elements[i_n].dataset.config_value === input_elements[i_n].value) {
+			continue;
+		}
+		
+		parameterString = "CFGW:" + input_elements[i_n].dataset.config_name + ":" + input_elements[i_n].value;
+		
+		ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+		
+		sentValues++;
+	}
+	
+	if(sentValues > 1) {
+		document.getElementById("loading-modal").style.display = "";
+		setTimeout(function(){ document.getElementById("loading-modal").style.display = "none"; }, 3000);
+	}
 }

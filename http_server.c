@@ -15,6 +15,7 @@
 #include "common.h"
 #include "rtc.h"
 #include "module_manager.h"
+#include "configuration.h"
 #include "mjson.h"
 
 #define MAX_CLIENT_QTY 3
@@ -25,12 +26,10 @@
 
 MessageBufferHandle_t client_action_buffer = NULL;
 
-TaskHandle_t httpd_task_handle = NULL;
-
 struct tcp_pcb *client_pcbs[MAX_CLIENT_QTY] = {NULL};
-int client_is_new[MAX_CLIENT_QTY] = {0};
 int client_qty = 0;
 struct tcp_pcb *logged_client_pcb = NULL;
+struct tcp_pcb *new_client_pcb = NULL;
 
 char access_key_txt[33];
 uint32_t access_key_time;
@@ -72,14 +71,11 @@ static int check_key(const char *key_text) {
 	return 0;
 }
 
-static int websocket_all_clients_write(int new_clients_only, const char *buffer, unsigned int buffer_len) {
+static int websocket_all_clients_write(const char *buffer, unsigned int buffer_len) {
 	err_t result;
 	
 	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
 		if(client_pcbs[i] == NULL || TCP_STATE_IS_CLOSING(client_pcbs[i]->state))
-			continue;
-		
-		if(client_is_new[i] != new_clients_only)
 			continue;
 		
 		LOCK_TCPIP_CORE();
@@ -93,104 +89,20 @@ static int websocket_all_clients_write(int new_clients_only, const char *buffer,
 	return 0;
 }
 
-static int websocket_logged_client_write(const char *buffer, unsigned int buffer_len) {
+static int websocket_client_write(struct tcp_pcb *pcb, const char *buffer, unsigned int buffer_len) {
 	err_t result;
 	
-	if(logged_client_pcb == NULL || TCP_STATE_IS_CLOSING(logged_client_pcb->state))
+	if(pcb == NULL || TCP_STATE_IS_CLOSING(pcb->state))
 		return -2;
 		
 	LOCK_TCPIP_CORE();
-	result = websocket_write(logged_client_pcb, (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
+	result = websocket_write(pcb, (const unsigned char *) buffer, (uint16_t) buffer_len, WS_TEXT_MODE);
 	UNLOCK_TCPIP_CORE();
 	
 	if(result != ERR_OK)
 		return -1;
 	
 	return 0;
-}
-
-void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
-	int client_i;
-	char optxt[32];
-	char aux[64];
-	
-	char response[256];
-	int response_len;
-	
-	for(client_i = 0; client_i < MAX_CLIENT_QTY; client_i++)
-		if(client_pcbs[client_i] == pcb)
-			break;
-	
-	if(client_i == MAX_CLIENT_QTY)
-		return;
-	
-	if(mjson_get_string((char*)data, data_len, "$.op", optxt, 64) <= 0)
-		return;
-	
-	if(!strcmp(optxt, "login")) {
-		if(mjson_get_string((char*)data, data_len, "$.password", aux, 64) <= 0)
-			return;
-		
-		if(!strcmp(aux, "12345678")) {
-			create_key();
-			
-			response_len = snprintf(response, sizeof(response), "{\"key\":\"%s\"}", access_key_txt);
-			
-			logged_client_pcb = pcb;
-		} else {
-			response_len = snprintf(response, sizeof(response), "{\"error\":\"wrong_password\"}");
-		}
-		
-		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
-		
-		return;
-	}
-	
-	if(mjson_get_string((char*)data, data_len, "$.key", aux, 64) != 32)
-		return;
-	
-	if(check_key(aux)) {
-		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
-		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
-		return;
-	}
-	
-	logged_client_pcb = pcb;
-	
-	if(!strcmp(optxt, "logout")) {
-		delete_key();
-		
-		logged_client_pcb = NULL;
-		
-		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
-		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
-		
-	} else if(!strcmp(optxt, "client-action")) {
-		if(mjson_get_string((char*)data, data_len, "$.parameters", aux, 64) < 3)
-			return;
-		
-		xMessageBufferSend(client_action_buffer, (void*) &aux, strlen(aux) + 1, pdMS_TO_TICKS(200));
-	} else if(!strcmp(optxt, "test-key")) {
-		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"key_ok\"}");
-		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
-	}
-	
-}
-
-void websocket_open_cb(struct tcp_pcb *pcb, const char *uri) {
-	if(client_qty >= MAX_CLIENT_QTY)
-		return; /* TODO: modify the httpd code to allow unwanted connections to be terminated */
-		
-	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
-		if(client_pcbs[i] == NULL) {
-			client_pcbs[i] = pcb;
-			client_is_new[i] = 1;
-			client_qty++;
-			break;
-		}
-	}
-	
-	xTaskNotifyGive(httpd_task_handle);
 }
 
 static int create_module_info_json(unsigned int module_addr, char *buffer, unsigned int buffer_len) {
@@ -305,46 +217,90 @@ static int create_module_data_json(unsigned int module_addr, char *buffer, unsig
 	return len;
 }
 
+static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
+	const config_info_t *config_info;
+	unsigned int response_len;
+	
+	for(unsigned int config_index = 0; config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
+		if(configuration_get_info(config_index, &config_info) < 0)
+			continue;
+		
+		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"fname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max);
+		
+		if(response_len >= buffer_len)
+			continue;
+		
+		websocket_client_write(pcb, buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
+static void send_config_values(struct tcp_pcb *pcb, int index, char *buffer, unsigned int buffer_len) {
+	const config_info_t *config_info;
+	char config_value[65];
+	unsigned int response_len;
+	
+	for(unsigned int config_index = ((index < 0) ? 0 : index); config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
+		if(configuration_get_info(config_index, &config_info) < 0)
+			continue;
+		
+		if(configuration_read_value(config_index, config_value, sizeof(config_value)) < 0)
+			continue;
+		
+		response_len = snprintf(buffer, buffer_len, "{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}", config_info->name, config_value);
+		
+		if(response_len >= buffer_len)
+			continue;
+		
+		websocket_client_write(pcb, buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(80));
+		
+		if(index >= 0)
+			break;
+	}
+}
+
 static void send_module_data(char *buffer, unsigned int buffer_len) {
 	int result;
 	int response_len;
 	
 	unsigned int module_addr = 0;
 	
+	if(buffer == NULL || buffer_len < 20)
+		return;
+	
 	while(module_addr < 32) {
 		response_len = snprintf(buffer, buffer_len, "{\"module_data\":[");
-		
-		if(response_len >= buffer_len)
-			return;
 		
 		while(module_addr < 32) {
 			
 			result = create_module_data_json(module_addr, buffer + response_len, buffer_len - response_len);
 			
-			if(result <= 0) {
-				module_addr++;
-				continue;
+			if(result > 0) {
+				
+				if(response_len + result + 2 > buffer_len)
+					break;
+				
+				response_len += result;
+				
+				buffer[response_len++] = ',';
 			}
-			
-			if(response_len + result + 2 > buffer_len)
-				break;
-			
-			response_len += result;
-			
-			buffer[response_len++] = ',';
 			
 			module_addr++;
 		}
 		
-		if(buffer[response_len] == '[')
+		if(buffer[response_len - 1] == '[') // Do not send empty array
 			return;
 		
-		response_len--; // Remove last comma
+		if(buffer[response_len - 1] == ',')
+			response_len--; // Remove last comma
 		
 		buffer[response_len++] = ']';
 		buffer[response_len++] = '}';
 		
-		websocket_all_clients_write(0, buffer, response_len);
+		websocket_all_clients_write(buffer, response_len);
 	}
 	
 	return;
@@ -421,6 +377,32 @@ int client_action_module_write(char *parameters) {
 		return -7;
 	
 	return 0;
+}
+
+int client_action_config_write(char *parameters) {
+	char *value_ptr;
+	unsigned int config_index;
+	
+	if(parameters == NULL)
+		return -1;
+	
+	value_ptr = strchr(parameters, ':');
+	
+	if(value_ptr == NULL)
+		return -2;
+	
+	*value_ptr = '\0';
+	
+	value_ptr++;
+	
+	config_index = configuration_get_index((const char*)parameters);
+	
+	if(config_index < 0)
+		return -3;
+	
+	configuration_write_value(config_index, (const char*)value_ptr);
+	
+	return config_index;
 }
 
 int client_action_update_time(char *parameters) {
@@ -511,6 +493,90 @@ int client_action_ota(char *parameters, char *result_buffer) {
 	return (err == OTA_UPDATE_DONE) ? 0 : -3;
 }
 
+void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
+	int client_i;
+	char optxt[32];
+	char aux[128];
+	
+	char response[256];
+	int response_len;
+	
+	for(client_i = 0; client_i < MAX_CLIENT_QTY; client_i++)
+		if(client_pcbs[client_i] == pcb)
+			break;
+	
+	if(client_i == MAX_CLIENT_QTY)
+		return;
+	
+	if(mjson_get_string((char*)data, data_len, "$.op", optxt, 64) <= 0)
+		return;
+	
+	if(!strcmp(optxt, "login")) {
+		if(mjson_get_string((char*)data, data_len, "$.password", aux, 64) <= 0)
+			return;
+		
+		if(!strcmp(aux, config_webui_password)) {
+			create_key();
+			
+			response_len = snprintf(response, sizeof(response), "{\"key\":\"%s\"}", access_key_txt);
+			
+			logged_client_pcb = pcb;
+		} else {
+			response_len = snprintf(response, sizeof(response), "{\"error\":\"wrong_password\"}");
+		}
+		
+		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+		
+		return;
+	}
+	
+	if(mjson_get_string((char*)data, data_len, "$.key", aux, 64) != 32)
+		return;
+	
+	if(check_key(aux)) {
+		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+		return;
+	}
+	
+	logged_client_pcb = pcb;
+	
+	if(!strcmp(optxt, "logout")) {
+		delete_key();
+		
+		logged_client_pcb = NULL;
+		
+		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+		
+	} else if(!strcmp(optxt, "client-action")) {
+		if(mjson_get_string((char*)data, data_len, "$.parameters", aux, 128) < 3)
+			return;
+		
+		xMessageBufferSend(client_action_buffer, (void*) &aux, strlen(aux) + 1, pdMS_TO_TICKS(200));
+	} else if(!strcmp(optxt, "test-key")) {
+		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"key_ok\"}");
+		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
+	}
+	
+}
+
+void websocket_open_cb(struct tcp_pcb *pcb, const char *uri) {
+	if(client_qty >= MAX_CLIENT_QTY)
+		return; /* TODO: modify the httpd code to allow unwanted connections to be terminated */
+		
+	for(int i = 0; i < MAX_CLIENT_QTY; i++) {
+		if(client_pcbs[i] == NULL) {
+			client_pcbs[i] = pcb;
+			client_qty++;
+			break;
+		}
+	}
+	
+	if(new_client_pcb == NULL)
+		new_client_pcb = pcb;
+}
+
 void httpd_task(void *pvParameters) {
 	int result;
 	
@@ -522,9 +588,7 @@ void httpd_task(void *pvParameters) {
 	
 	int time_to_wait;
 	
-	char aux[64];
-	
-	httpd_task_handle = xTaskGetCurrentTaskHandle();
+	char aux[128];
 	
 	client_action_buffer = xMessageBufferCreate(CLIENT_ACTION_BUFFER_SIZE);
 	
@@ -550,65 +614,10 @@ void httpd_task(void *pvParameters) {
 		for(int i = 0; i < MAX_CLIENT_QTY; i++)
 			if(client_pcbs[i] != NULL && TCP_STATE_IS_CLOSING(client_pcbs[i]->state)) {
 				client_pcbs[i] = NULL;
-				client_is_new[i] = 0;
 				client_qty--;
 			}
 		
-		if(!xMessageBufferIsEmpty(client_action_buffer)) {
-			xMessageBufferReceive(client_action_buffer, (void*) &aux, sizeof(aux), 0);
-			
-			if(!strncmp(aux, "RST", 3)) {
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"}");
-				websocket_all_clients_write(0, response_buffer, response_len);
-				
-				vTaskDelay(pdMS_TO_TICKS(2000));
-				sdk_system_restart();
-			} else if(!strncmp(aux, "MWR:", 4)) {
-				client_action_module_write(aux + 4);
-			} else if(!strncmp(aux, "TUP:", 4)) {
-				client_action_update_time(aux + 4);
-			} else if(!strncmp(aux, "SYS", 3)) {
-				float avg_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
-				
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"http_cycle_duration\":%.2f,\"mm_cycle_duration\":%.2f}}", FW_VERSION, (unsigned int) xPortGetFreeHeapSize(), avg_duration, mm_cycle_duration);
-				
-				websocket_logged_client_write(response_buffer, response_len);
-			} else if(!strncmp(aux, "OTA:", 4)) {
-				char result_txt[64];
-				
-				client_action_ota(aux + 4, result_txt);
-				
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"page_alert\":{\"type\":\"primary\",\"message\":\"%s\"}}", result_txt);
-				
-				websocket_logged_client_write(response_buffer, response_len);
-			}
-		}
-		
-		if(client_qty == 0) {
-			vTaskDelay(pdMS_TO_TICKS(1500));
-			continue;
-		}
-		
-		rtc_get_temp(&rtc_temperature);
-		rtc_get_time(&rtc_time);
-		
-		response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
-		
-		websocket_all_clients_write(0, response_buffer, response_len);
-		
-		send_module_data(response_buffer, sizeof(response_buffer));
-		
-		end_time = sdk_system_get_time();
-		cycle_count = (cycle_count + 1) % 3;
-		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
-		
-		time_to_wait = 1000 - cycle_duration[cycle_count];
-		
-		if(time_to_wait < 200)
-			time_to_wait = 200;
-		
-		if(ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(time_to_wait)) != 0) {
-			/* If we received a notification that means there is a new user connected */
+		if(new_client_pcb != NULL) {
 			for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
 				response_len = sprintf(response_buffer, "{\"module_info\":");
 				
@@ -624,13 +633,91 @@ void httpd_task(void *pvParameters) {
 				
 				response_buffer[response_len++] = '}';
 				
-				websocket_all_clients_write(1, response_buffer, response_len);
+				websocket_client_write(new_client_pcb, response_buffer, response_len);
+				
+				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 			
+			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"loading_done\"}");
+			websocket_client_write(new_client_pcb, response_buffer, response_len);
 			
-			
-			for(int i = 0; i < MAX_CLIENT_QTY; i++)
-				client_is_new[i] = 0;
+			new_client_pcb = NULL;
 		}
+		
+		while(!xMessageBufferIsEmpty(client_action_buffer)) {
+			xMessageBufferReceive(client_action_buffer, (void*) &aux, sizeof(aux), 0);
+			
+			if(!strncmp(aux, "RST:", 4)) {
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"}");
+				websocket_all_clients_write(response_buffer, response_len);
+				
+				vTaskDelay(pdMS_TO_TICKS(2000));
+				sdk_system_restart();
+				
+			} else if(!strncmp(aux, "MWR:", 4)) {
+				client_action_module_write(aux + 4);
+				
+			} else if(!strncmp(aux, "TUP:", 4)) {
+				client_action_update_time(aux + 4);
+				
+			} else if(!strncmp(aux, "SYSS:", 5)) {
+				float avg_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
+				
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"http_cycle_duration\":%.2f,\"mm_cycle_duration\":%.2f}}", FW_VERSION, (unsigned int) xPortGetFreeHeapSize(), avg_duration, mm_cycle_duration);
+				
+				websocket_client_write(logged_client_pcb, response_buffer, response_len);
+				
+			} else if(!strncmp(aux, "OTA:", 4)) {
+				char result_txt[64];
+				
+				client_action_ota(aux + 4, result_txt);
+				
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"page_alert\":{\"type\":\"primary\",\"message\":\"%s\"}}", result_txt);
+				
+				websocket_client_write(logged_client_pcb, response_buffer, response_len);
+				
+			} else if(!strncmp(aux, "CFGI:", 5)) {
+				const char done_message[] = "{\"server_notification\":\"config_info_done\"}";
+				
+				send_config_info(logged_client_pcb, response_buffer, sizeof(response_buffer));
+				
+				send_config_values(logged_client_pcb, -1, response_buffer, sizeof(response_buffer));
+				
+				websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
+				
+			} else if(!strncmp(aux, "CFGW:", 5)) {
+				int index;
+				
+				index = client_action_config_write(aux + 5);
+				
+				if(index >= 0)
+					send_config_values(logged_client_pcb, index, response_buffer, sizeof(response_buffer));
+			}
+		}
+		
+		if(client_qty == 0) {
+			vTaskDelay(pdMS_TO_TICKS(1500));
+			continue;
+		}
+		
+		rtc_get_temp(&rtc_temperature);
+		rtc_get_time(&rtc_time);
+		
+		response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
+		
+		websocket_all_clients_write(response_buffer, response_len);
+		
+		send_module_data(response_buffer, sizeof(response_buffer));
+		
+		end_time = sdk_system_get_time();
+		cycle_count = (cycle_count + 1) % 3;
+		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
+		
+		time_to_wait = 1000 - cycle_duration[cycle_count];
+		
+		if(time_to_wait < 200)
+			time_to_wait = 200;
+		
+		vTaskDelay(pdMS_TO_TICKS(time_to_wait));
 	}
 }

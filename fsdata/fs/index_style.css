@@ -6,15 +6,22 @@
 	position: relative;
 	z-index: 9999;
 	height: 0;
-	top: -20px;
+	top: 10px;
+	padding-left: calc(50% - 700px / 2);
+	padding-right: calc(50% - 700px / 2);
 }
 
 #alert-inner-container {
 	position: absolute;
-	width: 100%;
+	max-width: 700px;
 	opacity: 0.9;
 }
 
 .siimple-alert {
 	overflow-wrap: break-word;
+}
+
+.config-page-btns {
+	margin-top: 5px;
+	margin-bottom: 5px;
 }

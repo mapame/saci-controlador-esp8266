@@ -17,6 +17,7 @@
 
 #include "common.h"
 #include "rtc.h"
+#include "configuration.h"
 #include "module_manager.h"
 #include "comm.h"
 
@@ -51,10 +52,6 @@ void IRAM blink_task(void *pvParameters) {
 
 void user_init(void) {
 	int button = 0;
-	
-	char *config_wifi_ssid = NULL;
-	char *config_wifi_password = NULL;
-	char *config_wifi_ap_password = NULL;
 	
 	comm_init();
 	
@@ -103,11 +100,9 @@ void user_init(void) {
 		}
 	}
 	
-	sysparam_get_string("wifi_ssid", &config_wifi_ssid);
-	sysparam_get_string("wifi_password", &config_wifi_password);
-	sysparam_get_string("wifi_ap_password", &config_wifi_ap_password);
+	configuration_load();
 	
-	if(button > 8 || !config_wifi_ssid || !config_wifi_password || strlen(config_wifi_ssid) < 1 || strlen(config_wifi_password) < 1) {
+	if(button > 8 || strlen(config_wifi_ssid) < 1 || strlen(config_wifi_password) < 1) {
 		struct sdk_softap_config ap_config;
 		struct ip_info ap_ip;
 		ip4_addr_t dhcp_first_ip;
@@ -124,7 +119,7 @@ void user_init(void) {
 		
 		strcpy((char *)ap_config.ssid, WIFI_AP_SSID);
 		
-		if(config_wifi_ap_password && strlen(config_wifi_ap_password) > 7)
+		if(strlen(config_wifi_ap_password) >= 8)
 			strcpy((char *)ap_config.password, config_wifi_ap_password);
 		else
 			strcpy((char *)ap_config.password, WIFI_AP_DEFAULT_PASSWORD);
