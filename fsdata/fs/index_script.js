@@ -77,9 +77,9 @@ function wsOpen() {
 			
 			if(typeof received.server_notification !== "undefined") {
 				switch(received.server_notification) {
-					case "diagnose_mode":
+					case "diagnostic_mode":
 						document.getElementById("regular-dashboard").style.display = "none";
-						document.getElementById("diagnose-dashboard").style.display = "";
+						document.getElementById("diagnostic-dashboard").style.display = "";
 						break;
 						
 					case "loading_done":
@@ -188,16 +188,16 @@ function wsOpen() {
 			}
 			
 			if(typeof received.module_info !== "undefined") {
-				let module_card = document.getElementById('diagnose-mode-card-' + received.module_info.address);
+				let module_card = document.getElementById('diagnostic-mode-card-' + received.module_info.address);
 				
-				document.getElementById('diagnose-mode-no-module-warning').style.display = "none";
+				document.getElementById('diagnostic-mode-no-module-warning').style.display = "none";
 				
 				module_card.style.display = "";
 				module_card.dataset.modulename = received.module_info.name;
 				
-				module_card.getElementsByClassName("diagnose-mode-card-header")[0].innerHTML = received.module_info.address + " | " + received.module_info.name;
+				module_card.getElementsByClassName("diagnostic-mode-card-header")[0].innerHTML = received.module_info.address + " | " + received.module_info.name;
 				
-				let module_card_channel_list = module_card.getElementsByClassName("diagnose-mode-card-channel-list")[0];
+				let module_card_channel_list = module_card.getElementsByClassName("diagnostic-mode-card-channel-list")[0];
 				
 				while (module_card_channel_list.lastChild) {
 					module_card_channel_list.removeChild(module_card_channel_list.lastChild);
@@ -406,15 +406,15 @@ function testAccessKey() {
 }
 
 function createModuleCards() {
-	var original = document.getElementById("diagnose-mode-card-base");
+	var original = document.getElementById("diagnostic-mode-card-base");
 	
 	for (let i = 0; i < 32; ++i) {
 		let cloned = original.cloneNode(true);
 		
-		cloned.id = "diagnose-mode-card-" + i;
+		cloned.id = "diagnostic-mode-card-" + i;
 		cloned.style.display = "none";
 		
-		document.getElementById("diagnose-mode-card-row").appendChild(cloned);
+		document.getElementById("diagnostic-mode-card-row").appendChild(cloned);
 	}
 }
 

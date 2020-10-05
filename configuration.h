@@ -18,7 +18,7 @@ extern const config_info_t base_config_table[];
 extern const int extended_config_table_qty;
 extern const config_info_t extended_config_table[];
 
-extern int config_diagnose_mode;
+extern int config_diagnostic_mode;
 
 extern char config_webui_password[CONFIG_STR_SIZE];
 extern char config_wifi_ssid[CONFIG_STR_SIZE];

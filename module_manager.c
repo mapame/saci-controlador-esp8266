@@ -658,7 +658,7 @@ void module_manager_task(void *pvParameters) {
 	while(1) {
 		start_time = sdk_system_get_time();
 		
-		update_values(config_diagnose_mode);
+		update_values(config_diagnostic_mode);
 		
 		end_time = sdk_system_get_time();
 		

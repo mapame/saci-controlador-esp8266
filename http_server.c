@@ -581,8 +581,8 @@ void httpd_task(void *pvParameters) {
 			}
 		
 		if(new_client_pcb != NULL) {
-			if(config_diagnose_mode) {
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"diagnose_mode\"}");
+			if(config_diagnostic_mode) {
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"diagnostic_mode\"}");
 				websocket_client_write(new_client_pcb, response_buffer, response_len);
 				
 				for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
@@ -678,7 +678,7 @@ void httpd_task(void *pvParameters) {
 			
 			websocket_all_clients_write(response_buffer, response_len);
 			
-			if(config_diagnose_mode) {
+			if(config_diagnostic_mode) {
 				send_module_data(response_buffer, sizeof(response_buffer));
 			}
 		}

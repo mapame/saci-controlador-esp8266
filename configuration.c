@@ -8,7 +8,7 @@
 #include "configuration.h"
 
 
-int config_diagnose_mode;
+int config_diagnostic_mode;
 
 char config_webui_password[CONFIG_STR_SIZE];
 char config_wifi_ssid[CONFIG_STR_SIZE];
@@ -22,7 +22,7 @@ char config_telegram_group_id[CONFIG_STR_SIZE];
 const int base_config_table_qty = 9;
 
 const config_info_t base_config_table[] = {
-	{"diagnose_mode",			"", 'B', "1",				0,  1, 1, (void*) &config_diagnose_mode},
+	{"diagnostic_mode",			"", 'B', "1",				0,  1, 1, (void*) &config_diagnostic_mode},
 	{"webui_password",			"", 'T', "1234SACI",		8, 32, 0, (void*) &config_webui_password},
 	{"wifi_ssid",				"", 'T', "",				1, 32, 1, (void*) &config_wifi_ssid},
 	{"wifi_password",			"", 'T', "",				1, 63, 1, (void*) &config_wifi_password},

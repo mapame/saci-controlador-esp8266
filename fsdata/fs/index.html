@@ -41,11 +41,11 @@
 	<div id="dashboard-page" class="siimple-content siimple-content--large">
 		<div id="regular-dashboard">
 		</div>
-		<div id="diagnose-dashboard" style="display: none;">
+		<div id="diagnostic-dashboard" style="display: none;">
 			<div class="siimple-tip siimple-tip--warning">Sistema em modo de diagnostico.</div>
-			<div class="siimple-tip siimple-tip--error" id="diagnose-mode-no-module-warning">Nenhum módulo detectado.</div>
+			<div class="siimple-tip siimple-tip--error" id="diagnostic-mode-no-module-warning">Nenhum módulo detectado.</div>
 			<div class="siimple-grid">
-				<div id="diagnose-mode-card-row" class="siimple-grid-row"></div>
+				<div id="diagnostic-mode-card-row" class="siimple-grid-row"></div>
 			</div>
 		</div>
 	</div>
@@ -69,8 +69,8 @@
 			<div class="siimple-field">
 				<div class="siimple-field-label">Modo de diagnostico</div>
 				<div class="siimple-switch">
-					<input id="configuration_input_diagnose_mode" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
-					<label for="configuration_input_diagnose_mode"></label>
+					<input id="configuration_input_diagnostic_mode" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
+					<label for="configuration_input_diagnostic_mode"></label>
 				</div>
 			</div>
 			
@@ -141,13 +141,13 @@
 	</div>
 	
 	<div style="display: none;">
-		<div id="diagnose-mode-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
+		<div id="diagnostic-mode-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
 			<div class="siimple-card">
 				<div class="siimple-card-header" align="center">
-					<div class="siimple-h5 siimple--mb-0 diagnose-mode-card-header"></div>
+					<div class="siimple-h5 siimple--mb-0 diagnostic-mode-card-header"></div>
 				</div>
 				<div class="siimple-card-body">
-					<div class="siimple-list siimple--mb-0 diagnose-mode-card-channel-list">
+					<div class="siimple-list siimple--mb-0 diagnostic-mode-card-channel-list">
 					</div>
 				</div>
 			</div>
