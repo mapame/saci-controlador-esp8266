@@ -544,6 +544,8 @@ void httpd_task(void *pvParameters) {
 	char response_buffer[1024];
 	unsigned int response_len;
 	
+	int counter = 0;
+	
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
 	
@@ -579,24 +581,29 @@ void httpd_task(void *pvParameters) {
 			}
 		
 		if(new_client_pcb != NULL) {
-			for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
-				response_len = sprintf(response_buffer, "{\"module_info\":");
-				
-				result = create_module_info_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
-				
-				if(result <= 0)
-					continue;
-				
-				response_len += result;
-				
-				if(response_len >= sizeof(response_buffer))
-					continue;
-				
-				response_buffer[response_len++] = '}';
-				
+			if(config_diagnose_mode) {
+				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"diagnose_mode\"}");
 				websocket_client_write(new_client_pcb, response_buffer, response_len);
 				
-				vTaskDelay(pdMS_TO_TICKS(100));
+				for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
+					response_len = sprintf(response_buffer, "{\"module_info\":");
+					
+					result = create_module_info_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
+					
+					if(result <= 0)
+						continue;
+					
+					response_len += result;
+					
+					if(response_len >= sizeof(response_buffer))
+						continue;
+					
+					response_buffer[response_len++] = '}';
+					
+					websocket_client_write(new_client_pcb, response_buffer, response_len);
+					
+					vTaskDelay(pdMS_TO_TICKS(100));
+				}
 			}
 			
 			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"loading_done\"}");
@@ -657,18 +664,24 @@ void httpd_task(void *pvParameters) {
 		}
 		
 		if(client_qty == 0) {
-			vTaskDelay(pdMS_TO_TICKS(1500));
+			vTaskDelay(pdMS_TO_TICKS(1000));
 			continue;
 		}
 		
-		rtc_get_temp(&rtc_temperature);
-		rtc_get_time(&rtc_time);
+		counter = (counter + 1) % 2;
 		
-		response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
-		
-		websocket_all_clients_write(response_buffer, response_len);
-		
-		send_module_data(response_buffer, sizeof(response_buffer));
+		if(counter == 0) {
+			rtc_get_temp(&rtc_temperature);
+			rtc_get_time(&rtc_time);
+			
+			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
+			
+			websocket_all_clients_write(response_buffer, response_len);
+			
+			if(config_diagnose_mode) {
+				send_module_data(response_buffer, sizeof(response_buffer));
+			}
+		}
 		
 		end_time = sdk_system_get_time();
 		cycle_count = (cycle_count + 1) % 3;

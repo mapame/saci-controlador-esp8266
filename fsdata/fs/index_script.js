@@ -30,8 +30,6 @@ function wsOpen() {
 			setInterval(testAccessKey, 5000);
 			
 			receiveTimeoutInterval = setTimeout(function(){ secondaryNavbarChangeType("warning"); }, 4000);
-			
-			document.getElementById("dashboard-page").style.display = "";
 		};
 		
 		ws.onerror = function(evt) {
@@ -79,6 +77,11 @@ function wsOpen() {
 			
 			if(typeof received.server_notification !== "undefined") {
 				switch(received.server_notification) {
+					case "diagnose_mode":
+						document.getElementById("regular-dashboard").style.display = "none";
+						document.getElementById("diagnose-dashboard").style.display = "";
+						break;
+						
 					case "loading_done":
 						document.getElementById("loading-modal").style.display = "none";
 						break;
