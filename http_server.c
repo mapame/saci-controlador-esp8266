@@ -225,7 +225,7 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		if(configuration_get_info(config_index, &config_info) < 0)
 			continue;
 		
-		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"fname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max);
+		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"fname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
 		
 		if(response_len >= buffer_len)
 			continue;
@@ -314,12 +314,6 @@ int client_action_module_write(char *parameters) {
 	
 	unsigned int address, channel, port;
 	
-	char ctype, cwritable;
-	
-	char bvalue;
-	int ivalue;
-	float fvalue;
-	void *vvalue;
 	
 	if(parameters == NULL)
 		return -1;
@@ -340,40 +334,7 @@ int client_action_module_write(char *parameters) {
 	if(cresult != 3)
 		return -2;
 	
-	if(module_get_channel_info(address, channel, NULL, &ctype, &cwritable) <= 0)
-		return -3;
-	
-	if(cwritable == 'N')
-		return -4;
-	
-	switch(ctype) {
-		case 'B':
-			bvalue = (*param_ptrs[3] == '0') ? 0 : 1;
-			vvalue = (void*) &bvalue;
-			break;
-		case 'I':
-			if(sscanf(param_ptrs[3], "%d", &ivalue) == 1)
-				vvalue = (void*) &ivalue;
-			else
-				return -5;
-			
-			break;
-		case 'F':
-			if(sscanf(param_ptrs[3], "%f", &fvalue) == 1)
-				vvalue = (void*) &fvalue;
-			else
-				return -5;
-			
-			break;
-		case 'T':
-			vvalue = (void*) param_ptrs[3];
-			
-			break;
-		default:
-			return -6;
-	}
-	
-	if(module_set_port_value(address, channel, port, vvalue))
+	if(module_set_port_value_as_text(address, channel, port, param_ptrs[3]) < 0)
 		return -7;
 	
 	return 0;

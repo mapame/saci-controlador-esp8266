@@ -311,6 +311,7 @@ function wsOpen() {
 				input_element.dataset.config_type = received.config_info.type;
 				input_element.dataset.config_min = received.config_info.min;
 				input_element.dataset.config_max = received.config_info.max;
+				input_element.dataset.config_req_restart = received.config_info.req_restart;
 			}
 			
 			if(typeof received.config_data !== "undefined") {
@@ -541,6 +542,7 @@ function saveConfig() {
 	var input_elements = document.getElementsByClassName("configuration-input");
 	var invalidValues = 0;
 	var sentValues = 0;
+	var requireRestart = false;
 	
 	if(key === null) {
 		return;
@@ -588,10 +590,18 @@ function saveConfig() {
 		ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
 		
 		sentValues++;
+		
+		if(input_elements[i_n].dataset.config_req_restart === "Y") {
+			requireRestart = true;
+		}
 	}
 	
 	if(sentValues > 0) {
 		document.getElementById("loading-modal").style.display = "";
 		setTimeout(function(){ document.getElementById("loading-modal").style.display = "none"; }, 3000);
+		
+		if(requireRestart === true) {
+			addPageAlert("warning", "Algumas configurações modificadas só terão efeito depois que o sistema for reiniciado.");
+		}
 	}
 }

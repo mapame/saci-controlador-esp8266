@@ -13,6 +13,7 @@
 
 #include "common.h"
 #include "comm.h"
+#include "configuration.h"
 #include "module_manager.h"
 
 typedef struct {
@@ -36,21 +37,24 @@ typedef struct {
 static int fetch_channel_info(unsigned int module_addr, channel_desc_t *channel_ptr, unsigned int qty);
 static void free_channel_list(channel_desc_t *channel_ptr, unsigned int qty);
 static int parse_content(char *buffer, char *value_ptrs[], unsigned int max);
+static int set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value);
 
 SemaphoreHandle_t module_manager_mutex = NULL;
 
 module_desc_t module_list[32];
 unsigned int value_update_period_ms = 1000;
 float mm_cycle_duration;
-int diagnostic_mode = 1;
 
-static int update_values() {
+static int update_values(unsigned int force_read) {
 	int module_addr, chn, portn;
 	char aux_buffer[50];
 	comm_error_t error;
 	int skip_channel;
 	int binary_failed;
 	
+	char aux_b;
+	int  aux_i;
+	float aux_f;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -1;
@@ -63,7 +67,7 @@ static int update_values() {
 			if(module_list[module_addr].channels[chn].type == 'T') /* Do not support reading text from modules */
 				continue;
 			
-			if(!diagnostic_mode) {
+			if(!force_read) {
 				skip_channel = 1;
 				
 				for(portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
@@ -78,19 +82,19 @@ static int update_values() {
 					continue;
 			}
 			
+			/* If the data is binary, we can try to read multiple ports in a single operation */
 			binary_failed = 0;
-			
-			if(module_list[module_addr].channels[chn].type == 'B') {
+			if(module_list[module_addr].channels[chn].type == 'B' && module_list[module_addr].channels[chn].port_qty < 50) {
 				sprintf(aux_buffer, "%u", chn);
 				comm_send_command('B', module_addr, aux_buffer);
 				error = comm_receive_response('B', aux_buffer, 50);
 				
 				if(error != COMM_OK || aux_buffer[0] == '\x15')
-					binary_failed = 1;
+					binary_failed = 1; /* If the binary read failed we must read using the regular read operation */
 			}
 			
 			for(portn = 0; portn < module_list[module_addr].channels[chn].port_qty; portn++) {
-				if(!diagnostic_mode && module_list[module_addr].channels[chn].value_update_type[portn] == 'N')
+				if(!force_read && module_list[module_addr].channels[chn].value_update_type[portn] == 'N')
 					continue;
 				
 				if(module_list[module_addr].channels[chn].type != 'B' || binary_failed) {
@@ -107,11 +111,30 @@ static int update_values() {
 				}
 				
 				if(module_list[module_addr].channels[chn].type == 'B') {
-					((char*) module_list[module_addr].channels[chn].values)[portn] = (aux_buffer[binary_failed ? 0 : portn] == '0') ? 0 : 1;
+					aux_b = (aux_buffer[binary_failed ? 0 : portn] == '0') ? 0 : 1;
+					
+					if(module_list[module_addr].channels[chn].value_update_type[portn] == 'R' || force_read)
+						((char*) module_list[module_addr].channels[chn].values)[portn] = aux_b;
+					else if(aux_b != ((char*) module_list[module_addr].channels[chn].values)[portn])
+						set_port_value(module_addr, chn, portn, (module_list[module_addr].channels[chn].values + portn * sizeof(char)));
+					
 				} else if(module_list[module_addr].channels[chn].type == 'I') {
-					sscanf(aux_buffer, "%d", &(((int*) module_list[module_addr].channels[chn].values)[portn]));
+					if(sscanf(aux_buffer, "%d", &aux_i) != 1)
+						continue;
+					
+					if(module_list[module_addr].channels[chn].value_update_type[portn] == 'R' || force_read)
+						((int*) module_list[module_addr].channels[chn].values)[portn] = aux_i;
+					else if(aux_i != ((int*) module_list[module_addr].channels[chn].values)[portn])
+						set_port_value(module_addr, chn, portn, (module_list[module_addr].channels[chn].values + portn * sizeof(int)));
+					
 				} else if(module_list[module_addr].channels[chn].type == 'F') {
-					sscanf(aux_buffer, "%f", &(((float*) module_list[module_addr].channels[chn].values)[portn]));
+					if(sscanf(aux_buffer, "%f", &aux_f) != 1)
+						continue;
+					
+					if(module_list[module_addr].channels[chn].value_update_type[portn] == 'R' || force_read)
+						((float*) module_list[module_addr].channels[chn].values)[portn] = aux_f;
+					else if(aux_f != ((float*) module_list[module_addr].channels[chn].values)[portn])
+						set_port_value(module_addr, chn, portn, (module_list[module_addr].channels[chn].values + portn * sizeof(float)));
 				}
 			}
 		}
@@ -173,14 +196,14 @@ int module_get_channel_info(unsigned int module_addr, unsigned int channeln, cha
 	return port_qty;
 }
 
-int module_set_port_enable_update(unsigned int module_addr, unsigned int channeln, unsigned int portn) {
+int module_set_port_update_type(unsigned int module_addr, unsigned int channeln, unsigned int portn, char update_type) {
 	if(module_addr >= 32)
 		return -1;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
-	if(channeln >= module_list[module_addr].channel_qty || module_list[module_addr].channels == NULL) {
+	if(channeln >= module_list[module_addr].channel_qty || portn >= module_list[module_addr].channels[channeln].port_qty) {
 		xSemaphoreGive(module_manager_mutex);
 		return -3;
 	}
@@ -190,12 +213,18 @@ int module_set_port_enable_update(unsigned int module_addr, unsigned int channel
 		return -4;
 	}
 	
+	if(update_type != 'N' && update_type != 'W' && update_type != 'R')
+		return -5;
+	
+	if(update_type == 'W' && module_list[module_addr].channels[channeln].writable == 'N')
+		return -6;
+	
 	if(module_list[module_addr].channels[channeln].value_update_type == NULL) {
 		xSemaphoreGive(module_manager_mutex);
-		return -5;
+		return -7;
 	}
 	
-	module_list[module_addr].channels[channeln].value_update_type[portn] = 1;
+	module_list[module_addr].channels[channeln].value_update_type[portn] = update_type;
 	
 	xSemaphoreGive(module_manager_mutex);
 	
@@ -209,7 +238,7 @@ int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, f
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
-	if(channeln >= module_list[module_addr].channel_qty || module_list[module_addr].channels == NULL) {
+	if(channeln >= module_list[module_addr].channel_qty) {
 		xSemaphoreGive(module_manager_mutex);
 		return -3;
 	}
@@ -225,27 +254,10 @@ int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, f
 	return 0;
 }
 
-int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
+static int set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
+	float maxv, minv;
 	char aux_buffer[50];
 	comm_error_t error;
-	
-	float maxv, minv;
-	
-	if(value == NULL)
-		return -1;
-	
-	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
-		return -2;
-	
-	if(module_list[module_addr].channel_qty == 0 || channeln >= module_list[module_addr].channel_qty) {
-		xSemaphoreGive(module_manager_mutex);
-		return -3;
-	}
-	
-	if(module_list[module_addr].channels[channeln].writable == 'N') {
-		xSemaphoreGive(module_manager_mutex);
-		return -4;
-	}
 	
 	maxv = module_list[module_addr].channels[channeln].max;
 	minv = module_list[module_addr].channels[channeln].min;
@@ -264,20 +276,108 @@ int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 			snprintf(aux_buffer, 50, "%u:%u:%.*s", channeln, portn, (int) maxv, (char*) value);
 			break;
 		default:
-			xSemaphoreGive(module_manager_mutex);
-			return -5;
+			break;
 	}
 	
 	comm_send_command('W', module_addr, aux_buffer);
 	error = comm_receive_response('W', aux_buffer, 50);
 	
-	xSemaphoreGive(module_manager_mutex);
-	
 	if(error != COMM_OK)
-		return -6;
+		return -1;
 	
 	if(aux_buffer[0] == '\x15')
+		return -2;
+	
+	return 0;
+}
+
+
+
+int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
+	if(value == NULL)
+		return -1;
+	
+	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
+		return -2;
+	
+	if(channeln >= module_list[module_addr].channel_qty || portn >= module_list[module_addr].channels[channeln].port_qty) {
+		xSemaphoreGive(module_manager_mutex);
+		return -3;
+	}
+	
+	if(module_list[module_addr].channels[channeln].writable == 'N') {
+		xSemaphoreGive(module_manager_mutex);
+		return -4;
+	}
+	
+	if(set_port_value(module_addr, channeln, portn, value) < 0) {
+		xSemaphoreGive(module_manager_mutex);
+		return -5;
+	}
+	
+	xSemaphoreGive(module_manager_mutex);
+	
+	return 0;
+}
+
+int module_set_port_value_as_text(unsigned int module_addr, unsigned int channeln, unsigned int portn, const char *buffer) {
+	char bvalue;
+	int ivalue;
+	float fvalue;
+	void *value_ptr = NULL;
+	
+	if(buffer == NULL || buffer[0] == '\0')
+		return -1;
+	
+	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
+		return -2;
+	
+	if(channeln >= module_list[module_addr].channel_qty || portn >= module_list[module_addr].channels[channeln].port_qty) {
+		xSemaphoreGive(module_manager_mutex);
+		return -3;
+	}
+	
+	if(module_list[module_addr].channels[channeln].writable == 'N') {
+		xSemaphoreGive(module_manager_mutex);
+		return -4;
+	}
+	
+	switch(module_list[module_addr].channels[channeln].type) {
+		case 'B':
+			if(buffer[0] == '0' || buffer[0] == '1') {
+				bvalue = (buffer[0] == '0') ? 0 : 1;
+				value_ptr = (void*) &bvalue;
+			}
+			break;
+		case 'I':
+			if(sscanf(buffer, "%d", &ivalue) == 1)
+				value_ptr = (void*) &ivalue;
+			
+			break;
+		case 'F':
+			if(sscanf(buffer, "%f", &fvalue) == 1)
+				value_ptr = (void*) &fvalue;
+			
+			break;
+		case 'T':
+			value_ptr = (void*) buffer;
+			
+			break;
+		default:
+			return -5;
+	}
+	
+	if(value_ptr == NULL) {
+		xSemaphoreGive(module_manager_mutex);
+		return -6;
+	}
+	
+	if(set_port_value(module_addr, channeln, portn, value_ptr) < 0) {
+		xSemaphoreGive(module_manager_mutex);
 		return -7;
+	}
+	
+	xSemaphoreGive(module_manager_mutex);
 	
 	return 0;
 }
@@ -289,7 +389,7 @@ int module_get_port_value_as_text(unsigned int module_addr, unsigned int channel
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
-	if(module_list[module_addr].channel_qty == 0 || channeln >= module_list[module_addr].channel_qty) {
+	if(channeln >= module_list[module_addr].channel_qty || portn >= module_list[module_addr].channels[channeln].port_qty) {
 		xSemaphoreGive(module_manager_mutex);
 		return -3;
 	}
@@ -325,7 +425,7 @@ int module_get_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
-	if(module_list[module_addr].channel_qty == 0 || channeln >= module_list[module_addr].channel_qty) {
+	if(channeln >= module_list[module_addr].channel_qty || portn >= module_list[module_addr].channels[channeln].port_qty) {
 		xSemaphoreGive(module_manager_mutex);
 		return -3;
 	}
@@ -551,11 +651,14 @@ void module_manager_task(void *pvParameters) {
 		module_list[mod_addr].channel_qty = 0;
 	
 	create_module_list();
+	update_values(1);
+	
+	vTaskDelay(pdMS_TO_TICKS(200));
 	
 	while(1) {
 		start_time = sdk_system_get_time();
 		
-		update_values();
+		update_values(config_diagnose_mode);
 		
 		end_time = sdk_system_get_time();
 		
