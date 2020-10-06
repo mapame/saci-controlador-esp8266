@@ -3,7 +3,7 @@
 
 typedef struct config_info_s {
 	char name[32];
-	char fname[64];
+	char dname[64];
 	char type;
 	char default_value[CONFIG_STR_SIZE];
 	float min;

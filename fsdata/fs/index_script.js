@@ -98,25 +98,6 @@ function wsOpen() {
 						requestConfigInfo();
 						
 						break;
-					
-					case "restart":
-						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página automaticamente em 5 segundos...");
-						setTimeout(function(){ document.location.reload(false); }, 5000);
-						break;
-						
-					default:
-						console.log("Received unkown server notification: " + received.server_notification);
-						
-						break;
-				}
-			}
-			
-			if(typeof received.error !== "undefined") {
-				switch(received.error) {
-					case "wrong_password":
-						document.getElementById("login-input").value = "";
-						addPageAlert("warning", "Senha incorreta!");
-						break;
 						
 					case "invalid_key":
 						localStorage.removeItem("access_key");
@@ -130,7 +111,19 @@ function wsOpen() {
 						
 						break;
 						
+					case "wrong_password":
+						document.getElementById("login-input").value = "";
+						addPageAlert("warning", "Senha incorreta!");
+						break;
+						
+					case "restart":
+						addPageAlert("warning", "O controlador foi reiniciado, atualizando a página automaticamente em 5 segundos...");
+						setTimeout(function(){ document.location.reload(false); }, 5000);
+						break;
+						
 					default:
+						console.log("Received unkown server notification: " + received.server_notification);
+						
 						break;
 				}
 			}
@@ -270,7 +263,7 @@ function wsOpen() {
 					new_field.className = "siimple-field";
 					new_label.className = "siimple-field-label";
 					
-					new_label.innerText = received.config_info.fname;
+					new_label.innerText = received.config_info.dname;
 					
 					new_field.appendChild(new_label);
 					

@@ -225,7 +225,7 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		if(configuration_get_info(config_index, &config_info) < 0)
 			continue;
 		
-		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"fname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
+		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"dname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
 		
 		if(response_len >= buffer_len)
 			continue;
@@ -483,7 +483,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 			
 			logged_client_pcb = pcb;
 		} else {
-			response_len = snprintf(response, sizeof(response), "{\"error\":\"wrong_password\"}");
+			response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"wrong_password\"}");
 		}
 		
 		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
@@ -495,7 +495,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 		return;
 	
 	if(check_key(aux)) {
-		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"invalid_key\"}");
 		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
 		return;
 	}
@@ -507,7 +507,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 		
 		logged_client_pcb = NULL;
 		
-		response_len = snprintf(response, sizeof(response), "{\"error\":\"invalid_key\"}");
+		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"invalid_key\"}");
 		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
 		
 	} else if(!strcmp(optxt, "client-action")) {
