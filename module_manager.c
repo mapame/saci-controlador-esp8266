@@ -288,6 +288,22 @@ static int set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	if(aux_buffer[0] == '\x15')
 		return -2;
 	
+	switch(module_list[module_addr].channels[channeln].type) {
+		case 'B':
+			((char*) module_list[module_addr].channels[channeln].values)[portn] = *((char*) value);
+			break;
+		case 'I':
+			((int*) module_list[module_addr].channels[channeln].values)[portn] = *((int*) value);
+			break;
+		case 'F':
+			((float*) module_list[module_addr].channels[channeln].values)[portn] = *((float*) value);
+			break;
+		case 'T': /* Do not support reading text from modules */
+			break;
+		default:
+			break;
+	}
+	
 	return 0;
 }
 
