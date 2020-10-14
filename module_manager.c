@@ -41,7 +41,8 @@ static int set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 
 SemaphoreHandle_t module_manager_mutex = NULL;
 
-module_desc_t module_list[32];
+
+module_desc_t module_list[MAX_MODULE_QTY];
 unsigned int value_update_period_ms = 1000;
 float mm_cycle_duration;
 
@@ -62,7 +63,7 @@ static int update_values(unsigned int force_read) {
 	/* TODO: retry when communication fail */
 	/* TODO: notify when a communication error happens */
 	
-	for(module_addr = 0; module_addr < 32; module_addr++) {
+	for(module_addr = 0; module_addr < MAX_MODULE_QTY; module_addr++) {
 		for(chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
 			if(module_list[module_addr].channels[chn].type == 'T') /* Do not support reading text from modules */
 				continue;
@@ -148,7 +149,7 @@ static int update_values(unsigned int force_read) {
 int module_get_info(unsigned int module_addr, char *name_buffer, unsigned int buffer_len) {
 	int channel_qty;
 	
-	if(module_addr >= 32)
+	if(module_addr >= MAX_MODULE_QTY)
 		return -1;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
@@ -169,7 +170,7 @@ int module_get_info(unsigned int module_addr, char *name_buffer, unsigned int bu
 int module_get_channel_info(unsigned int module_addr, unsigned int channeln, char *name_buffer, char *type, char *writable) {
 	int port_qty;
 	
-	if(module_addr >= 32)
+	if(module_addr >= MAX_MODULE_QTY)
 		return -1;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
@@ -197,8 +198,11 @@ int module_get_channel_info(unsigned int module_addr, unsigned int channeln, cha
 }
 
 int module_set_port_update_type(unsigned int module_addr, unsigned int channeln, unsigned int portn, char update_type) {
-	if(module_addr >= 32)
+	if(module_addr >= MAX_MODULE_QTY)
 		return -1;
+	
+	if(update_type != 'N' && update_type != 'W' && update_type != 'R')
+		return -5;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
@@ -213,11 +217,10 @@ int module_set_port_update_type(unsigned int module_addr, unsigned int channeln,
 		return -4;
 	}
 	
-	if(update_type != 'N' && update_type != 'W' && update_type != 'R')
-		return -5;
-	
-	if(update_type == 'W' && module_list[module_addr].channels[channeln].writable == 'N')
+	if(update_type == 'W' && module_list[module_addr].channels[channeln].writable == 'N') {
+		xSemaphoreGive(module_manager_mutex);
 		return -6;
+	}
 	
 	if(module_list[module_addr].channels[channeln].value_update_type == NULL) {
 		xSemaphoreGive(module_manager_mutex);
@@ -232,7 +235,7 @@ int module_set_port_update_type(unsigned int module_addr, unsigned int channeln,
 }
 
 int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, float *min, float *max) {
-	if(module_addr >= 32)
+	if(module_addr >= MAX_MODULE_QTY)
 		return -1;
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
@@ -307,11 +310,13 @@ static int set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	return 0;
 }
 
-
-
 int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value) {
 	if(value == NULL)
 		return -1;
+	
+	if(module_addr >= MAX_MODULE_QTY) {
+		return -3;
+	}
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
@@ -344,6 +349,10 @@ int module_set_port_value_as_text(unsigned int module_addr, unsigned int channel
 	
 	if(buffer == NULL || buffer[0] == '\0')
 		return -1;
+	
+	if(module_addr >= MAX_MODULE_QTY) {
+		return -3;
+	}
 	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
@@ -402,6 +411,10 @@ int module_get_port_value_as_text(unsigned int module_addr, unsigned int channel
 	if(buffer == NULL || buffer_len < 2)
 		return -1;
 	
+	if(module_addr >= MAX_MODULE_QTY) {
+		return -3;
+	}
+	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
@@ -438,6 +451,10 @@ int module_get_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	if(value_buffer == NULL)
 		return -1;
 	
+	if(module_addr >= MAX_MODULE_QTY) {
+		return -3;
+	}
+	
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
@@ -466,6 +483,50 @@ int module_get_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	xSemaphoreGive(module_manager_mutex);
 	
 	return 0;
+}
+
+int module_get_channel_values(unsigned int module_addr, unsigned int channeln, void **value_ptr) {
+	unsigned int port_qty;
+	size_t vsize;
+	
+	if(value_ptr == NULL)
+		return -1;
+	
+	if(module_addr >= MAX_MODULE_QTY) {
+		return -3;
+	}
+	
+	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
+		return -2;
+	
+	if(channeln >= module_list[module_addr].channel_qty) {
+		xSemaphoreGive(module_manager_mutex);
+		return -3;
+	}
+	
+	port_qty = module_list[module_addr].channels[channeln].port_qty;
+	
+	if(module_list[module_addr].channels[channeln].type == 'B')
+		vsize = sizeof(char);
+	else if(module_list[module_addr].channels[channeln].type == 'I')
+		vsize = sizeof(int);
+	else if(module_list[module_addr].channels[channeln].type == 'F')
+		vsize = sizeof(float);
+	else {
+		*value_ptr = NULL;
+		
+		xSemaphoreGive(module_manager_mutex);
+		
+		return -4;
+	}
+	
+	*value_ptr = malloc(vsize);
+	
+	memcpy(*value_ptr, module_list[module_addr].channels[channeln].values, vsize * port_qty);
+	
+	xSemaphoreGive(module_manager_mutex);
+	
+	return port_qty;
 }
 
 static int parse_content(char *buffer, char *value_ptrs[], unsigned int max) {
@@ -513,14 +574,14 @@ static int create_module_list() {
 	if(!xSemaphoreTake(module_manager_mutex, pdMS_TO_TICKS(200)))
 		return -1;
 	
-	for(mod_addr = 0; mod_addr < 32; mod_addr++) {
+	for(mod_addr = 0; mod_addr < MAX_MODULE_QTY; mod_addr++) {
 		free_channel_list(module_list[mod_addr].channels, module_list[mod_addr].channel_qty);
 		module_list[mod_addr].channel_qty = 0;
 	}
 	
 	/* TODO: retry when communication fail */
 	
-	for(mod_addr = 0; mod_addr < 32; mod_addr++) {
+	for(mod_addr = 0; mod_addr < MAX_MODULE_QTY; mod_addr++) {
 		comm_send_command('P', mod_addr, "");
 		
 		error = comm_receive_response('P', aux_buffer, 50);
@@ -663,13 +724,14 @@ void module_manager_task(void *pvParameters) {
 	
 	module_manager_mutex = xSemaphoreCreateMutex();
 	
-	for(int mod_addr = 0; mod_addr < 32; mod_addr++)
+	for(int mod_addr = 0; mod_addr < MAX_MODULE_QTY; mod_addr++)
 		module_list[mod_addr].channel_qty = 0;
 	
 	create_module_list();
 	update_values(1);
 	
 	vTaskDelay(pdMS_TO_TICKS(200));
+	
 	
 	while(1) {
 		start_time = sdk_system_get_time();

@@ -4,6 +4,7 @@ int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, f
 
 int module_get_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, void *value_buffer);
 int module_get_port_value_as_text(unsigned int module_addr, unsigned int channeln, unsigned int portn, char *buffer, unsigned int buffer_len);
+int module_get_channel_values(unsigned int module_addr, unsigned int channeln, void **value_ptr);
 
 int module_set_port_value(unsigned int module_addr, unsigned int channeln, unsigned int portn, const void *value);
 int module_set_port_value_as_text(unsigned int module_addr, unsigned int channeln, unsigned int portn, const char *buffer);
