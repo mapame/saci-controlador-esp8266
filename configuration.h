@@ -12,6 +12,11 @@ typedef struct config_info_s {
 	void *variable_ptr;
 } config_info_t;
 
+typedef struct int_list_s {
+	int qty;
+	int *values;
+} int_list_t;
+
 extern const int base_config_table_qty;
 extern const config_info_t base_config_table[];
 

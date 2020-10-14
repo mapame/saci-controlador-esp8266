@@ -19,7 +19,6 @@ char config_thingspeak_channel_key[CONFIG_STR_SIZE];
 char config_telegram_bot_token[CONFIG_STR_SIZE];
 char config_telegram_group_id[CONFIG_STR_SIZE];
 
-const int base_config_table_qty = 9;
 
 const config_info_t base_config_table[] = {
 	{"diagnostic_mode",			"", 'B', "1",				0,  1, 1, (void*) &config_diagnostic_mode},
@@ -32,6 +31,56 @@ const config_info_t base_config_table[] = {
 	{"telegram_bot_token",		"", 'T', "",				0, 63, 0, (void*) &config_telegram_bot_token},
 	{"telegram_group_id",		"", 'T', "",				0, 63, 0, (void*) &config_telegram_group_id},
 };
+
+const int base_config_table_qty = sizeof(base_config_table) / sizeof(config_info_t);
+
+
+static int convert_text_to_int_list(const char *text, int min, int max, int_list_t *list) {
+	char auxt[128];
+	char *saveptr = NULL;
+	char *tokptr = NULL;
+	int auxi;
+	
+	if(text == NULL || list == NULL)
+		return -1;
+	
+	list->qty = 0;
+	
+	if(text[0] == '\0') {
+		list->values = NULL;
+		return -2;
+	}
+	
+	list->values = (int*) malloc(10 * sizeof(int));
+	
+	strncpy(auxt, text, 127);
+	auxt[127] = '\0';
+	
+	tokptr = strtok_r(auxt, ",", &saveptr);
+	
+	do {
+		if(list->qty >= 10)
+			list->values = (int*) realloc(list->values, list->qty * sizeof(int));
+		
+		if(sscanf(tokptr, "%d", &auxi) != 1) {
+			free(list->values);
+			list->values = NULL;
+			return -3;
+		}
+		
+		if(auxi > max || auxi < min) {
+			free(list->values);
+			list->values = NULL;
+			return -4;
+		}
+		
+		list->values[list->qty++] = auxi;
+	} while((tokptr = strtok_r(NULL, ",", &saveptr)) != NULL);
+	
+	list->values = (int*) realloc(list->values, list->qty * sizeof(int));
+	
+	return list->qty;
+}
 
 int configuration_get_index(const char *name) {
 	if(name == NULL)
@@ -105,6 +154,7 @@ int configuration_write_value(unsigned int index, const char *buffer) {
 	const config_info_t *config_ptr;
 	int tmp_i;
 	float tmp_f;
+	int_list_t tmp_l;
 	
 	if(index >= base_config_table_qty + extended_config_table_qty)
 		return -1;
@@ -118,6 +168,14 @@ int configuration_write_value(unsigned int index, const char *buffer) {
 		config_ptr = &(extended_config_table[index - base_config_table_qty]);
 	
 	switch(config_ptr->type) {
+		case 'L':
+			if(strlen(buffer) >= 128)
+				return -5;
+			
+			if(convert_text_to_int_list(buffer, (int)config_ptr->min, (int)config_ptr->max, &tmp_l) <= 0)
+				return -4;
+			
+			break;
 		case 'T':
 			if(strlen(buffer) > MIN(config_ptr->max, CONFIG_STR_SIZE) || strlen(buffer) < config_ptr->min)
 				return -5;
@@ -155,6 +213,11 @@ int configuration_write_value(unsigned int index, const char *buffer) {
 		return 0;
 	
 	switch(config_ptr->type) {
+		case 'L':
+			free(((int_list_t*)config_ptr->variable_ptr)->values);
+			memcpy(config_ptr->variable_ptr, &tmp_l, sizeof(int_list_t));
+			
+			break;
 		case 'T':
 			strncpy((char*) config_ptr->variable_ptr, (const char*) buffer, CONFIG_STR_SIZE);
 			((char*) config_ptr->variable_ptr)[CONFIG_STR_SIZE - 1] = '\0';
@@ -190,6 +253,11 @@ void configuration_load() {
 		status = sysparam_get_string(config_ptr->name, &value_ptr);
 		
 		switch(config_ptr->type) {
+			case 'L':
+				if(status != SYSPARAM_OK || convert_text_to_int_list(value_ptr, (int)config_ptr->min, (int)config_ptr->max, (int_list_t*)config_ptr->variable_ptr) <= 0)
+					convert_text_to_int_list(config_ptr->default_value, (int)config_ptr->min, (int)config_ptr->max, (int_list_t*)config_ptr->variable_ptr);
+				
+				break;
 			case 'T':
 				if(status != SYSPARAM_OK)
 					strncpy((char*) config_ptr->variable_ptr, config_ptr->default_value, CONFIG_STR_SIZE);
