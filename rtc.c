@@ -67,8 +67,10 @@ int rtc_get_temp(float *temp) {
 	if(!xSemaphoreTake(rtc_mutex, pdMS_TO_TICKS(200)))
 		return -2;
 	
-	if(!ds3231_getTempFloat(&rtc_dev, temp))
+	if(!ds3231_getTempFloat(&rtc_dev, temp)) {
+		xSemaphoreGive(rtc_mutex);
 		return -3;
+	}
 	
 	xSemaphoreGive(rtc_mutex);
 	
