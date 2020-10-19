@@ -89,7 +89,7 @@ comm_error_t comm_receive_response(char cmd, char *content_buffer, unsigned int 
 	while(state <= 10) {
 		/* TODO: check CPU frequency and set the appropriate value */
 		/* At 80 MHz each cycle takes ~250 ns */
-		timeout_retries = 20000;
+		timeout_retries = 10000;
 		
 		while((received = uart_getc_nowait(0)) == -1) { /* Read 1 byte from uart0 */
 				timeout_retries--;

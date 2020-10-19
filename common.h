@@ -1,4 +1,4 @@
-#define FW_VERSION "128"
+#define FW_VERSION "129"
 
 //#define DEBUG
 
@@ -21,6 +21,8 @@
 #define DE_PIN 15
 
 #define BAUDRATE 115200
+
+#define MAX_MODULE_QTY 32
 
 #define WIFI_AP_SSID "SACI_AP"
 #define WIFI_AP_DEFAULT_PASSWORD "SACI1234"
