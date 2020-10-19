@@ -12,11 +12,12 @@
 #include <httpd/httpd.h>
 #include "http_client_ota.h"
 
+#include "libs/mjson.h"
+
 #include "common.h"
 #include "rtc.h"
 #include "module_manager.h"
 #include "configuration.h"
-#include "mjson.h"
 
 #define MAX_CLIENT_QTY 3
 
