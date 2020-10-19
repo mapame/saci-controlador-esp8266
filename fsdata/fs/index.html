@@ -16,21 +16,21 @@
 	<div id="loading-modal" class="siimple-modal siimple-modal--small">
 		<div class="siimple-modal-content">
 			<div class="siimple-modal-body">
+				<div id="loading-modal-text" class="siimple-h4 siimple--text-center siimple--mb-4">Carregando...</div>
 				<div class="siimple-spinner siimple-spinner--primary siimple-spinner--large"></div>
 			</div>
 		</div>
 	</div>
 	
-	
 	<div class="siimple-navbar siimple-navbar--large siimple-navbar--dark">
 		<a id="page-title" class="siimple-navbar-title" href=".">S.A.C.I.</a>
 		<div class="siimple--float-right" id="navbar-login" style="display: none;">
-			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha">
-			<a class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button" onclick="login()">Entrar</a>
+			<input type="password" class="siimple-input siimple--ml-2" id="login-input" placeholder="Senha" onkeyup="inputCallOnReturn(event, login)">
+			<div class="siimple-btn siimple-btn--primary siimple--ml-2" id="login-button" onclick="login()">Entrar</div>
 		</div>
 		<div id="navbar-logged" class="siimple--float-right siimple-btn-group" style="display: none;">
-			<a id="configpage-button" class="siimple-btn siimple-btn--primary" onclick="toggleConfigPage()">Configurações</a>
-			<a id="logout-button" class="siimple-btn siimple-btn--warning" onclick="logout()">Sair</a>
+			<div id="configpage-button" class="siimple-btn siimple-btn--primary" onclick="toggleConfigPage()">Configurações</div>
+			<div id="logout-button" class="siimple-btn siimple-btn--warning" onclick="logout()">Sair</div>
 		</div>
 	</div>
 	<div id="secondary-navbar" class="siimple-navbar siimple-navbar--large siimple-navbar--light siimple--py-0 siimple--text-bold siimple--text-center">
@@ -39,10 +39,11 @@
 	</div>
 	
 	<div id="dashboard-page" class="siimple-content siimple-content--large">
-		<div id="regular-dashboard">
+		<div id="regular-dashboard" class="siimple-grid">
+			<div id="regular-dashboard-line0" class="siimple-grid-row"></div>
 		</div>
 		<div id="diagnostic-dashboard" style="display: none;">
-			<div class="siimple-tip siimple-tip--warning">Sistema em modo de diagnostico.</div>
+			<div class="siimple-tip siimple-tip--warning">Sistema em modo de diagnóstico.</div>
 			<div class="siimple-tip siimple-tip--error" id="diagnostic-mode-no-module-warning">Nenhum módulo detectado.</div>
 			<div class="siimple-grid">
 				<div id="diagnostic-mode-card-row" class="siimple-grid-row"></div>
@@ -55,7 +56,7 @@
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="restartSystem()">Reiniciar</div>
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="updateSystemTime()">Ajustar Relógio</div>
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="firmwareUpdate()">Atualizar Firmware</div>
-			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="showSystemStats()">Status do Sistema</div>
+			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="showSystemStats()">Informações do Sistema</div>
 		</div>
 		<div>
 			<div class="config-page-btns siimple-btn siimple-btn--success" onclick="saveConfig()">Salvar Configurações</div>
@@ -69,14 +70,14 @@
 			<div class="siimple-field">
 				<div class="siimple-field-label">Modo de diagnostico</div>
 				<div class="siimple-switch">
-					<input id="configuration_input_diagnostic_mode" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
-					<label for="configuration_input_diagnostic_mode"></label>
+					<input id="configuration-input-diagnostic_mode" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
+					<label for="configuration-input-diagnostic_mode"></label>
 				</div>
 			</div>
 			
 			<div class="siimple-field">
 				<div class="siimple-field-label">Senha de acesso</div>
-				<input id="configuration_input_webui_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-webui_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Senha de acesso à página de configuração</div>
 			</div>
 		</div>
@@ -86,17 +87,17 @@
 			
 			<div class="siimple-field">
 				<div class="siimple-field-label">Senha Wi-Fi próprio</div>
-				<input id="configuration_input_wifi_ap_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-wifi_ap_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Senha do modo roteador</div>
 			</div>
 			<div class="siimple-field">
 				<div class="siimple-field-label">Nome Wi-Fi</div>
-				<input id="configuration_input_wifi_ssid" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-wifi_ssid" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Nome da rede a se conectar</div>
 			</div>
 			<div class="siimple-field">
 				<div class="siimple-field-label">Senha Wi-Fi</div>
-				<input id="configuration_input_wifi_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-wifi_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Senha da rede a se conectar</div>
 			</div>
 		</div>
@@ -106,12 +107,12 @@
 			
 			<div class="siimple-field">
 				<div class="siimple-field-label">ID do canal</div>
-				<input id="configuration_input_thingspeak_channel_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-thingspeak_channel_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Identificador do canal</div>
 			</div>
 			<div class="siimple-field">
 				<div class="siimple-field-label">API key do canal</div>
-				<input id="configuration_input_thingspeak_channel_key" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-thingspeak_channel_key" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Chave de acesso do canal</div>
 			</div>
 		</div>
@@ -121,12 +122,12 @@
 			
 			<div class="siimple-field">
 				<div class="siimple-field-label">Token do bot</div>
-				<input id="configuration_input_telegram_bot_token" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-telegram_bot_token" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Token para controle do bot</div>
 			</div>
 			<div class="siimple-field">
 				<div class="siimple-field-label">ID do grupo</div>
-				<input id="configuration_input_telegram_group_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<input id="configuration-input-telegram_group_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
 				<div class="siimple-field-helper">Identificador do grupo autorizado a se comunicar com o bot</div>
 			</div>
 		</div>
@@ -137,19 +138,14 @@
 	</div>
 	
 	<div class="siimple-footer siimple-footer--light" align="center">
-		&copy; 2020 Matheus Medeiros
+		<div class="siimple-footer-subtitle">&copy; 2020 Matheus Medeiros</div>
 	</div>
 	
 	<div style="display: none;">
-		<div id="diagnostic-mode-card-base" class="siimple-grid-col siimple-grid-col--4 siimple-grid-col--lg-6 siimple-grid-col--sm-12">
+		<div id="siimple-card-base">
 			<div class="siimple-card">
-				<div class="siimple-card-header" align="center">
-					<div class="siimple-h5 siimple--mb-0 diagnostic-mode-card-header"></div>
-				</div>
-				<div class="siimple-card-body">
-					<div class="siimple-list siimple--mb-0 diagnostic-mode-card-channel-list">
-					</div>
-				</div>
+				<div class="siimple-card-header" align="center"></div>
+				<div class="siimple-card-body"></div>
 			</div>
 		</div>
 	</div>

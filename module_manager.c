@@ -41,6 +41,7 @@ static int set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 
 SemaphoreHandle_t module_manager_mutex = NULL;
 
+extern TaskHandle_t custom_code_task_handle;
 
 module_desc_t module_list[MAX_MODULE_QTY];
 unsigned int value_update_period_ms = 1000;
@@ -732,6 +733,7 @@ void module_manager_task(void *pvParameters) {
 	
 	vTaskDelay(pdMS_TO_TICKS(200));
 	
+	xTaskNotifyGive(custom_code_task_handle);
 	
 	while(1) {
 		start_time = sdk_system_get_time();

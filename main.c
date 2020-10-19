@@ -26,6 +26,12 @@ char ap_mode = 0;
 void telnet_task(void *pvParameters);
 void httpd_task(void *pvParameters);
 void module_manager_task(void *pvParameters);
+void custom_code_task(void *pvParameters);
+
+TaskHandle_t module_manager_task_handle = NULL;
+TaskHandle_t custom_code_task_handle = NULL;
+TaskHandle_t httpd_task_handle = NULL;
+TaskHandle_t blink_task_handle = NULL;
 
 void IRAM blink_task(void *pvParameters) {
 	int cycle = 0;
@@ -147,9 +153,10 @@ void user_init(void) {
 		sdk_wifi_station_set_config(&wifi_config);
 	}
 	
-	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 4, NULL);
-	xTaskCreate(&httpd_task, "http_task", 2048, NULL, 2, NULL);
-	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, NULL);
+	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 5, &module_manager_task_handle);
+	xTaskCreate(&custom_code_task, "custom_code_task", 512, NULL, 4, &custom_code_task_handle);
+	xTaskCreate(&httpd_task, "http_task", 2048, NULL, 2, &httpd_task_handle);
+	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, &blink_task_handle);
 	
 	if(ap_mode == 1) {
 		xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 2, NULL);

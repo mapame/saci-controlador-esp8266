@@ -18,12 +18,18 @@
 #include "rtc.h"
 #include "module_manager.h"
 #include "configuration.h"
+#include "dashboard.h"
 
 #define MAX_CLIENT_QTY 3
 
 #define CLIENT_ACTION_BUFFER_SIZE 2048
 
 #define KEY_EXPIRATION_TIME 30U * 60U
+
+extern TaskHandle_t module_manager_task_handle;
+extern TaskHandle_t custom_code_task_handle;
+extern TaskHandle_t httpd_task_handle;
+extern TaskHandle_t blink_task_handle;
 
 MessageBufferHandle_t client_action_buffer = NULL;
 
@@ -36,6 +42,8 @@ char access_key_txt[33];
 uint32_t access_key_time;
 
 extern float mm_cycle_duration;
+extern float cc_cycle_duration;
+float http_cycle_duration;
 
 static void create_key() {
 	uint8_t key_value[16];
@@ -138,7 +146,8 @@ static int create_module_info_json(unsigned int module_addr, char *buffer, unsig
 		if(module_get_channel_bounds(module_addr, channeln, &min, &max))
 			return -5;
 		
-		len += snprintf(buffer + len, buffer_len - len, "{\"name\":\"%s\",\"type\":\"%c\",\"port_qty\":\"%d\",\"writable\":\"%c\",\"min\":%.4f,\"max\":%.4f},", aux, type, port_qty, writable, min, max);
+		len += snprintf(buffer + len, buffer_len - len,	"{\"name\":\"%s\",\"type\":\"%c\",\"port_qty\":\"%d\",\"writable\":\"%c\",\"min\":%.4f,\"max\":%.4f},",
+														aux, type, port_qty, writable, min, max);
 	}
 	
 	if(len >= buffer_len)
@@ -218,15 +227,69 @@ static int create_module_data_json(unsigned int module_addr, char *buffer, unsig
 	return len;
 }
 
+static int create_dashboard_parameters_json(unsigned int dashboard_i, char *buffer, unsigned int buffer_len) {
+	int type_i;
+	unsigned int len = 0;
+	
+	if(buffer == NULL || buffer_len < 2)
+		return -1;
+	
+	if(dashboard_i >= dashboard_item_qty)
+		return -2;
+	
+	type_i = dashboard_type_get_index(dashboard_itens[dashboard_i].type_name);
+	
+	if(type_i < 0)
+		return -3;
+	
+	buffer[len++] = '[';
+	
+	for(int p_i = 0; p_i < 4; p_i++) {
+		if(dashboard_itens[dashboard_i].parameters[p_i] == NULL) {
+			len += snprintf(buffer + len, buffer_len - len, "null,");
+		} else {
+			switch(dashboard_item_types[type_i].parameter_types[p_i]) {
+				case 'I':
+					len += snprintf(buffer + len, buffer_len - len, "%d,", *((int*)dashboard_itens[dashboard_i].parameters[p_i]));
+					break;
+				case 'F':
+					len += snprintf(buffer + len, buffer_len - len, "%.4f,", *((float*)dashboard_itens[dashboard_i].parameters[p_i]));
+					break;
+				case 'T':
+					len += snprintf(buffer + len, buffer_len - len, "\"%s\",", (char*)dashboard_itens[dashboard_i].parameters[p_i]);
+					break;
+				case 'N':
+					break;
+				default:
+					break;
+			}
+		}
+		
+		if(len >= buffer_len)
+			return -4;
+	}
+	
+	if(buffer[len - 1] == ',')
+		len--; // Remove last comma
+	
+	buffer[len++] = ']';
+	
+	return len;
+}
+
 static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
 	const config_info_t *config_info;
 	unsigned int response_len;
+	
+	if(buffer == NULL || buffer_len < 20)
+		return;
 	
 	for(unsigned int config_index = 0; config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
 		if(configuration_get_info(config_index, &config_info) < 0)
 			continue;
 		
-		response_len = snprintf(buffer, buffer_len, "{\"config_info\":{\"name\":\"%s\",\"dname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}", config_info->name, config_info->fname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
+		response_len = snprintf(buffer, buffer_len,	"{\"config_info\":{\"name\":\"%s\",\"dname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}",
+													config_info->name, config_info->dname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
 		
 		if(response_len >= buffer_len)
 			continue;
@@ -249,7 +312,8 @@ static void send_config_values(struct tcp_pcb *pcb, int index, char *buffer, uns
 		if(configuration_read_value(config_index, config_value, sizeof(config_value)) < 0)
 			continue;
 		
-		response_len = snprintf(buffer, buffer_len, "{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}", config_info->name, config_value);
+		response_len = snprintf(buffer, buffer_len,	"{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}",
+													config_info->name, config_value);
 		
 		if(response_len >= buffer_len)
 			continue;
@@ -263,19 +327,44 @@ static void send_config_values(struct tcp_pcb *pcb, int index, char *buffer, uns
 	}
 }
 
+static void send_module_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
+	int result;
+	unsigned int response_len;
+	
+	for(unsigned int module_addr = 0; module_addr < MAX_MODULE_QTY; module_addr++) {
+		response_len = sprintf(buffer, "{\"module_info\":");
+		
+		result = create_module_info_json(module_addr, buffer + response_len, buffer_len - response_len);
+		
+		if(result <= 0)
+			continue;
+		
+		response_len += result;
+		
+		if(response_len >= buffer_len)
+			continue;
+		
+		buffer[response_len++] = '}';
+		
+		websocket_client_write(pcb, buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
 static void send_module_data(char *buffer, unsigned int buffer_len) {
 	int result;
-	int response_len;
+	unsigned int response_len;
 	
 	unsigned int module_addr = 0;
 	
 	if(buffer == NULL || buffer_len < 20)
 		return;
 	
-	while(module_addr < 32) {
+	while(module_addr < MAX_MODULE_QTY) {
 		response_len = snprintf(buffer, buffer_len, "{\"module_data\":[");
 		
-		while(module_addr < 32) {
+		while(module_addr < MAX_MODULE_QTY) {
 			
 			result = create_module_data_json(module_addr, buffer + response_len, buffer_len - response_len);
 			
@@ -302,9 +391,113 @@ static void send_module_data(char *buffer, unsigned int buffer_len) {
 		buffer[response_len++] = '}';
 		
 		websocket_all_clients_write(buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
+static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
+	int result;
+	
+	unsigned int response_len;
+	
+	if(buffer == NULL || buffer_len < 20)
+		return;
+	
+	response_len = snprintf(buffer, buffer_len, "{\"dashboard_lines\":{\"qty\":\"%u\",\"titles\":[", dashboard_line_title_qty);
+	
+	if(response_len >= buffer_len)
+		return;
+	
+	for(unsigned int i = 0; i < dashboard_line_title_qty; i++) {
+		
+		result = snprintf(buffer + response_len, buffer_len - response_len, "\"%s\",", &(dashboard_line_titles[i][0]));
+		
+		if(response_len + result + 3 - 1 >= buffer_len)
+			break;
+		
+		response_len += result;
 	}
 	
-	return;
+	if(buffer[response_len - 1] == ',')
+		response_len--; // Remove last comma
+	
+	buffer[response_len++] = ']';
+	buffer[response_len++] = '}';
+	buffer[response_len++] = '}';
+	
+	websocket_client_write(pcb, buffer, response_len);
+	
+	vTaskDelay(pdMS_TO_TICKS(200));
+}
+
+static void send_dashboard_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
+	int result;
+	unsigned int response_len;
+	
+	if(buffer == NULL || buffer_len < 20)
+		return;
+	
+	for(unsigned int di = 0; di < dashboard_item_qty; di++) {
+		response_len = snprintf(buffer, buffer_len,	"{\"dashboard_info\":{\"number\":%u,\"line\":%u,\"width\":[%u,%u,%u],\"type\":\"%s\",\"dname\":\"%s\",\"parameters\":",
+													di, dashboard_itens[di].line, dashboard_itens[di].width[0], dashboard_itens[di].width[1], dashboard_itens[di].width[2], dashboard_itens[di].type_name, dashboard_itens[di].dname);
+		
+		if(response_len >= buffer_len)
+			continue;
+		
+		result = create_dashboard_parameters_json(di, buffer + response_len, buffer_len - response_len);
+		
+		if(result <= 0 || response_len + result + 2 >= buffer_len)
+			continue;
+		
+		response_len += result;
+		
+		buffer[response_len++] = '}';
+		buffer[response_len++] = '}';
+		
+		websocket_client_write(pcb, buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
+static void send_dashboard_parameters(char *buffer, unsigned int buffer_len) {
+	int result;
+	unsigned int response_len;
+	
+	if(buffer == NULL || buffer_len < 20)
+		return;
+	
+	for(unsigned int di = 0; di < dashboard_item_qty; di++) {
+		response_len = snprintf(buffer, buffer_len,	"{\"dashboard_parameter\":{\"number\":%u,\"parameters\":", di);
+		
+		if(response_len >= buffer_len)
+			continue;
+		
+		result = create_dashboard_parameters_json(di, buffer + response_len, buffer_len - response_len);
+		
+		if(result <= 0 || response_len + result + 2 >= buffer_len)
+			continue;
+		
+		response_len += result;
+		
+		buffer[response_len++] = '}';
+		buffer[response_len++] = '}';
+		
+		websocket_all_clients_write(buffer, response_len);
+		
+		vTaskDelay(pdMS_TO_TICKS(50));
+	}
+}
+
+
+void client_action_restart() {
+	const char restart_message[] = "{\"server_notification\":\"restart\"}";
+	
+	websocket_client_write(logged_client_pcb, restart_message, strlen(restart_message));
+	
+	vTaskDelay(pdMS_TO_TICKS(2000));
+	sdk_system_restart();
 }
 
 int client_action_module_write(char *parameters) {
@@ -382,7 +575,7 @@ int client_action_update_time(char *parameters) {
 	return 0;
 }
 
-int client_action_ota(char *parameters, char *result_buffer) {
+int client_action_ota(char *parameters, const char **message_ptr) {
 	char *saveptr = NULL;
 	ota_info http_ota_info;
 	const char default_ota_port[] = "8080";
@@ -408,51 +601,111 @@ int client_action_ota(char *parameters, char *result_buffer) {
 	
 	err = ota_update(&http_ota_info);
 	
-	if(result_buffer != NULL) {
+	if(message_ptr != NULL) {
 		switch(err) {
 			case OTA_DNS_LOOKUP_FALLIED:
-				strcpy(result_buffer, "DNS lookup has failed.");
+				*message_ptr = (const char*) &("OTA_DNS_LOOKUP_FAILED");
 				break;
 			case OTA_SOCKET_ALLOCATION_FALLIED:
-				strcpy(result_buffer, "Impossible allocate required socket.");
+				*message_ptr = (const char*) &("OTA_SOCKET_ALLOCATION_FAILED");
 				break;
 			case OTA_SOCKET_CONNECTION_FALLIED:
-				strcpy(result_buffer, "Server unreachable, impossible connect.");
+				*message_ptr = (const char*) &("OTA_SOCKET_CONNECTION_FAILED");
 				break;
 			case OTA_SHA_DONT_MATCH:
-				strcpy(result_buffer, "Checksum does not match.");
+				*message_ptr = (const char*) &("OTA_SHA_DONT_MATCH");
 				break;
 			case OTA_REQUEST_SEND_FALLIED:
-				strcpy(result_buffer, "Failed to send HTTP request.");
+				*message_ptr = (const char*) &("OTA_REQUEST_SEND_FAILED");
 				break;
 			case OTA_DOWLOAD_SIZE_NOT_MATCH:
-				strcpy(result_buffer, "Dowload size don't match server declared size.");
+				*message_ptr = (const char*) &("OTA_DOWLOAD_SIZE_NOT_MATCH");
 				break;
 			case OTA_ONE_SLOT_ONLY:
-				strcpy(result_buffer, "rboot has only one slot configured, OTA is not possible.");
+				*message_ptr = (const char*) &("OTA_ONE_SLOT_ONLY");
 				break;
 			case OTA_FAIL_SET_NEW_SLOT:
-				strcpy(result_buffer, "Failed to switch to new rom.");
+				*message_ptr = (const char*) &("OTA_FAIL_SET_NEW_SLOT");
 				break;
 			case OTA_IMAGE_VERIFY_FALLIED:
-				strcpy(result_buffer, "Downloaded image is not valid.");
+				*message_ptr = (const char*) &("OTA_IMAGE_VERIFY_FAILED");
 				break;
 			case OTA_UPDATE_DONE:
-				strcpy(result_buffer, "OTA process has completed, ready to restart into new ROM.");
+				*message_ptr = (const char*) &("OTA_UPDATE_DONE");
 				break;
 			case OTA_HTTP_OK:
-				strcpy(result_buffer, "HTTP 200, OK");
+				*message_ptr = (const char*) &("OTA_HTTP_OK");
 				break;
 			case OTA_HTTP_NOTFOUND:
-				strcpy(result_buffer, "HTTP 404, file not found.");
+				*message_ptr = (const char*) &("OTA_HTTP_NOTFOUND");
 				break;
 			default:
-				sprintf(result_buffer, "Unknown error. (%d)", err);
+				*message_ptr = (const char*) &("OTA_UNKOWN_ERROR");
 				break;
 		}
 	}
 	
 	return (err == OTA_UPDATE_DONE) ? 0 : -3;
+}
+
+static inline void process_client_actions(char *buffer, unsigned int buffer_len) {
+	char auxbuffer[128];
+	int response_len;
+	
+	while(!xMessageBufferIsEmpty(client_action_buffer)) {
+		xMessageBufferReceive(client_action_buffer, (void*) &auxbuffer, sizeof(auxbuffer), 0);
+		
+		if(!strncmp(auxbuffer, "RST:", 4)) {
+			client_action_restart();
+			
+		} else if(!strncmp(auxbuffer, "MWR:", 4)) {
+			client_action_module_write(auxbuffer + 4);
+			
+		} else if(!strncmp(auxbuffer, "TUP:", 4)) {
+			client_action_update_time(auxbuffer + 4);
+			
+		} else if(!strncmp(auxbuffer, "SYSS:", 5)) {
+			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+																				FW_VERSION, (unsigned int) xPortGetFreeHeapSize(),
+																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration,
+																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(custom_code_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(blink_task_handle));
+			
+			websocket_client_write(logged_client_pcb, buffer, response_len);
+			
+		} else if(!strncmp(auxbuffer, "OTA:", 4)) {
+			const char *result_msg = NULL;
+			int result;
+			
+			result = client_action_ota(auxbuffer + 4, &result_msg);
+			
+			if(result == 0)
+				response_len = snprintf(buffer, buffer_len, "{\"server_notification\":\"ota_done\"}");
+			else
+				response_len = snprintf(buffer, buffer_len, "{\"server_notification\":\"ota_failed\",\"ota_error\":\"%s\"}", ((result_msg == NULL) ? "" : result_msg));
+			
+			websocket_client_write(logged_client_pcb, buffer, response_len);
+			
+			if(result == 0)
+				client_action_restart();
+			
+		} else if(!strncmp(auxbuffer, "CFGI:", 5)) {
+			const char done_message[] = "{\"server_notification\":\"config_info_done\"}";
+			
+			send_config_info(logged_client_pcb, buffer, buffer_len);
+			
+			send_config_values(logged_client_pcb, -1, buffer, buffer_len);
+			
+			websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
+			
+		} else if(!strncmp(auxbuffer, "CFGW:", 5)) {
+			int index;
+			
+			index = client_action_config_write(auxbuffer + 5);
+			
+			if(index >= 0)
+				send_config_values(logged_client_pcb, index, buffer, buffer_len);
+		}
+	}
 }
 
 void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
@@ -480,7 +733,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 		if(!strcmp(aux, config_webui_password)) {
 			create_key();
 			
-			response_len = snprintf(response, sizeof(response), "{\"key\":\"%s\"}", access_key_txt);
+			response_len = snprintf(response, sizeof(response), "{\"new_key\":\"%s\"}", access_key_txt);
 			
 			logged_client_pcb = pcb;
 		} else {
@@ -540,8 +793,6 @@ void websocket_open_cb(struct tcp_pcb *pcb, const char *uri) {
 }
 
 void httpd_task(void *pvParameters) {
-	int result;
-	
 	char response_buffer[1024];
 	unsigned int response_len;
 	
@@ -549,10 +800,7 @@ void httpd_task(void *pvParameters) {
 	
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
-	
 	int time_to_wait;
-	
-	char aux[128];
 	
 	client_action_buffer = xMessageBufferCreate(CLIENT_ACTION_BUFFER_SIZE);
 	
@@ -562,9 +810,6 @@ void httpd_task(void *pvParameters) {
 	vTaskDelay(pdMS_TO_TICKS(100));
 	
 	for(;;) {
-		time_t rtc_time;
-		float rtc_temperature;
-		
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
@@ -586,25 +831,12 @@ void httpd_task(void *pvParameters) {
 				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"diagnostic_mode\"}");
 				websocket_client_write(new_client_pcb, response_buffer, response_len);
 				
-				for(unsigned int module_addr = 0; module_addr < 32; module_addr++) {
-					response_len = sprintf(response_buffer, "{\"module_info\":");
-					
-					result = create_module_info_json(module_addr, response_buffer + response_len, sizeof(response_buffer) - response_len);
-					
-					if(result <= 0)
-						continue;
-					
-					response_len += result;
-					
-					if(response_len >= sizeof(response_buffer))
-						continue;
-					
-					response_buffer[response_len++] = '}';
-					
-					websocket_client_write(new_client_pcb, response_buffer, response_len);
-					
-					vTaskDelay(pdMS_TO_TICKS(100));
-				}
+				send_module_info(new_client_pcb, response_buffer, sizeof(response_buffer));
+				
+			} else {
+				send_dashboard_lines(new_client_pcb, response_buffer, sizeof(response_buffer));
+				
+				send_dashboard_info(new_client_pcb, response_buffer, sizeof(response_buffer));
 			}
 			
 			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"loading_done\"}");
@@ -613,56 +845,7 @@ void httpd_task(void *pvParameters) {
 			new_client_pcb = NULL;
 		}
 		
-		while(!xMessageBufferIsEmpty(client_action_buffer)) {
-			xMessageBufferReceive(client_action_buffer, (void*) &aux, sizeof(aux), 0);
-			
-			if(!strncmp(aux, "RST:", 4)) {
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"server_notification\":\"restart\"}");
-				websocket_all_clients_write(response_buffer, response_len);
-				
-				vTaskDelay(pdMS_TO_TICKS(2000));
-				sdk_system_restart();
-				
-			} else if(!strncmp(aux, "MWR:", 4)) {
-				client_action_module_write(aux + 4);
-				
-			} else if(!strncmp(aux, "TUP:", 4)) {
-				client_action_update_time(aux + 4);
-				
-			} else if(!strncmp(aux, "SYSS:", 5)) {
-				float avg_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
-				
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"http_cycle_duration\":%.2f,\"mm_cycle_duration\":%.2f}}", FW_VERSION, (unsigned int) xPortGetFreeHeapSize(), avg_duration, mm_cycle_duration);
-				
-				websocket_client_write(logged_client_pcb, response_buffer, response_len);
-				
-			} else if(!strncmp(aux, "OTA:", 4)) {
-				char result_txt[64];
-				
-				client_action_ota(aux + 4, result_txt);
-				
-				response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"page_alert\":{\"type\":\"primary\",\"message\":\"%s\"}}", result_txt);
-				
-				websocket_client_write(logged_client_pcb, response_buffer, response_len);
-				
-			} else if(!strncmp(aux, "CFGI:", 5)) {
-				const char done_message[] = "{\"server_notification\":\"config_info_done\"}";
-				
-				send_config_info(logged_client_pcb, response_buffer, sizeof(response_buffer));
-				
-				send_config_values(logged_client_pcb, -1, response_buffer, sizeof(response_buffer));
-				
-				websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
-				
-			} else if(!strncmp(aux, "CFGW:", 5)) {
-				int index;
-				
-				index = client_action_config_write(aux + 5);
-				
-				if(index >= 0)
-					send_config_values(logged_client_pcb, index, response_buffer, sizeof(response_buffer));
-			}
-		}
+		process_client_actions(response_buffer, sizeof(response_buffer));
 		
 		if(client_qty == 0) {
 			vTaskDelay(pdMS_TO_TICKS(1000));
@@ -672,6 +855,9 @@ void httpd_task(void *pvParameters) {
 		counter = (counter + 1) % 2;
 		
 		if(counter == 0) {
+			time_t rtc_time;
+			float rtc_temperature;
+			
 			rtc_get_temp(&rtc_temperature);
 			rtc_get_time(&rtc_time);
 			
@@ -681,18 +867,18 @@ void httpd_task(void *pvParameters) {
 			
 			if(config_diagnostic_mode) {
 				send_module_data(response_buffer, sizeof(response_buffer));
+			} else {
+				send_dashboard_parameters(response_buffer, sizeof(response_buffer));
 			}
 		}
 		
 		end_time = sdk_system_get_time();
 		cycle_count = (cycle_count + 1) % 3;
 		cycle_duration[cycle_count] = SYSTIME_DIFF(start_time, end_time) / 1000U;
+		http_cycle_duration = ((float)(cycle_duration[0] + cycle_duration[1] + cycle_duration[2])) / 3.0;
 		
 		time_to_wait = 1000 - cycle_duration[cycle_count];
 		
-		if(time_to_wait < 200)
-			time_to_wait = 200;
-		
-		vTaskDelay(pdMS_TO_TICKS(time_to_wait));
+		vTaskDelay(pdMS_TO_TICKS(MAX(time_to_wait, 200)));
 	}
 }
