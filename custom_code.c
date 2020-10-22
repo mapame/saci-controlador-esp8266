@@ -21,59 +21,43 @@
 QueueHandle_t cc_command_queue = NULL;
 float cc_cycle_duration;
 
-int config_nivel_cisterna_addr;
-int_list_t config_nivel_cisterna_ports;
-
-int config_nivel_caixainf_addr;
-int_list_t config_nivel_caixainf_ports;
-
-int config_nivel_caixasup_addr;
-int_list_t config_nivel_caixasup_ports;
-
-int config_fluxo_rua_addr;
-float config_fator_fluxo_rua;
+float config_teste;
+char config_teste_texto[CONFIG_STR_SIZE];
 
 const config_info_t extended_config_table[] = {
-	{"nivel_cisterna_addr",		"Sensor de Nível - Cisterna (Endereço)",		'I', "",		0,	32,		1, (void*) &config_nivel_cisterna_addr},
-	{"nivel_cisterna_ports",	"Sensor de Nível - Cisterna (Portas)",			'L', "",		0,	255,	1, (void*) &config_nivel_cisterna_ports},
-	{"nivel_caixasup_addr",		"Sensor de Nível - Caixa Inf. (Endereço)",		'I', "",		0,	32,		1, (void*) &config_nivel_caixainf_addr},
-	{"nivel_caixasup_ports",	"Sensor de Nível - Caixa Inf. (Portas)",		'L', "",		0,	255,	1, (void*) &config_nivel_caixainf_ports},
-	{"nivel_caixainf_addr",		"Sensor de Nível - Caixa Sup. (Endereço)",		'I', "",		0,	32,		1, (void*) &config_nivel_caixasup_addr},
-	{"nivel_caixainf_ports",	"Sensor de Nível - Caixa Sup. (Portas)",		'L', "",		0,	255,	1, (void*) &config_nivel_caixasup_ports},
-	{"fluxo_rua_addr",			"Sensor de Fluxo (Endereço)",					'I', "",		0,	32,		1, (void*) &config_fluxo_rua_addr},
-	{"fator_fluxo_rua",			"Sensor de Fluxo: Fator de Conversão",			'F', "1.0",		1,	100,	0, (void*) &config_fator_fluxo_rua},
+	{"teste_configuracao",		"Configuração de Teste",						'F', "",		0,	100,	0, (void*) &config_teste},
+	{"teste_configuracao_texto","Configuração de Teste (Texto)",				'T', "",		0,	20,		0, (void*) &config_teste_texto}
 };
 
 const int extended_config_table_qty = sizeof(extended_config_table) / sizeof(config_info_t);
 
 const char dashboard_line_titles[][64] = {
 	"",
-	"Controle"
+	"Textos",
+	"Botões"
 };
 
 const int dashboard_line_title_qty = sizeof(dashboard_line_titles) / (sizeof(char) * 64);
 
-float nivel_cisterna = 0;
-char texto_nivel_cisterna[8] = "N/A";
-float nivel_caixainf = 0;
-char texto_nivel_caixainf[8] = "N/A";
-float nivel_caixasup = 0;
-char texto_nivel_caixasup[8] = "N/A";
-float fluxo_agua;
-char texto_fluxo_agua[16] = "N/A";
+float gauge_teste_value = 0;
+char gauge_teste_text[8] = "0.0 %";
+char text_teste_text1[16] = "0 sec";
+char text_teste_text2[32] = "Hello World!";
+
 
 const dashboard_item_t dashboard_itens[] = {
-	{0, {3, 4, 6}, "vertical_gauge",	"Nível Cisterna",			{(void*)&nivel_cisterna, (void*)texto_nivel_cisterna, NULL, NULL}},
-	{0, {3, 4, 6}, "vertical_gauge",	"Nível Caixa Inferior",		{(void*)&nivel_caixainf, (void*)texto_nivel_caixainf, NULL, NULL}},
-	{0, {3, 4, 6}, "vertical_gauge",	"Nível Caixa Superior",		{(void*)&nivel_caixasup, (void*)texto_nivel_caixasup, NULL, NULL}},
-	{0, {3, 4, 6}, "text",				"Fluxo de Água",			{(void*)texto_fluxo_agua, (void*)&(""), NULL, NULL}},
+	{0, {4, 6, 12},	"vertical_gauge",	"Memória Heap Livre",		{(void*)&gauge_teste_value, (void*)gauge_teste_text, NULL, NULL}},
+	{0, {4, 6, 12},	"vertical_gauge",	"Teste Indicador",			{(void*)&config_teste, (void*)&("Teste"), NULL, NULL}},
+	{1, {4, 6, 12},	"text",				"Uptime",					{(void*)text_teste_text1, (void*)&(""), NULL, NULL}},
+	{1, {4, 6, 12},	"text",				"Teste Texto",				{(void*)text_teste_text2, (void*)&(""), NULL, NULL}},
+	{2, {4, 6, 12},	"button",			"Botão 1",					{(void*)&((int){1}), (void*)&("CMD_TESTE1"), NULL, NULL}},
+	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&((int){1}), (void*)&("CMD_TESTE2"), NULL, NULL}}
 };
 
 const int dashboard_item_qty = sizeof(dashboard_itens) / sizeof(dashboard_item_t);
 
 void custom_code_task(void *pvParameters) {
 	int counter = 0;
-	int result;
 	
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
@@ -92,8 +76,17 @@ void custom_code_task(void *pvParameters) {
 	while(1) {
 		start_time = sdk_system_get_time();
 		
+		gauge_teste_value = (((float)xPortGetFreeHeapSize()) / 81920.0) * 100.0;
+		snprintf(gauge_teste_text, sizeof(gauge_teste_text), "%.1f %%", gauge_teste_value);
+		
+		snprintf(text_teste_text1, sizeof(text_teste_text1), "%u secs", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000));
 		
 		while (xQueueReceive(cc_command_queue, (void *)command, 0) == pdPASS) {
+			if(!strncmp(command, "CMD_TESTE1", 32)) {
+				strcpy(text_teste_text2, "Botão 1 pressionado");
+			} else if(!strncmp(command, "CMD_TESTE2", 32)) {
+				strcpy(text_teste_text2, "Botão 1 pressionado");
+			}
 		}
 		
 		counter = (counter + 1) % 30;
