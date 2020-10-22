@@ -8,10 +8,13 @@
 #include <task.h>
 #include <queue.h>
 
+#include <mqtt_bearssl.h>
+
 #include "common.h"
 #include "configuration.h"
 #include "module_manager.h"
 #include "dashboard.h"
+#include "mqtt_task.h"
 #define COMMAND_QUEUE_DEPTH 10
 #define COMMAND_MAX_LEN 32
 
@@ -103,6 +106,7 @@ void custom_code_task(void *pvParameters) {
 		
 		time_to_wait = 2000 - cycle_duration[cycle_count];
 		
+		vTaskDelay(pdMS_TO_TICKS(MAX(time_to_wait, 200)));
 	}
 	
 }

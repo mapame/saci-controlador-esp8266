@@ -159,6 +159,7 @@ function wsOpen() {
 				statusText += "\nCiclo HTTP: " + received.adv_system_status.cycle_duration[0] + " ms";
 				statusText += "\nCiclo MM: " + received.adv_system_status.cycle_duration[1] + " ms";
 				statusText += "\nCiclo CC: " + received.adv_system_status.cycle_duration[2] + " ms";
+				statusText += "\nCiclo MQTT: " + received.adv_system_status.cycle_duration[3] + " ms";
 				
 				setTimeout(function(){ alert(statusText); }, 10);
 			}

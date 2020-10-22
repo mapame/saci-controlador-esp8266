@@ -30,7 +30,7 @@
 extern TaskHandle_t module_manager_task_handle;
 extern TaskHandle_t custom_code_task_handle;
 extern TaskHandle_t httpd_task_handle;
-extern TaskHandle_t blink_task_handle;
+extern TaskHandle_t mqtt_task_handle;
 
 extern QueueHandle_t cc_command_queue;
 
@@ -49,6 +49,7 @@ uint32_t access_key_time;
 extern float mm_cycle_duration;
 extern float cc_cycle_duration;
 float http_cycle_duration;
+extern float mqtt_cycle_duration;
 
 static void create_key() {
 	uint8_t key_value[16];
@@ -679,10 +680,13 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			client_action_update_time(auxbuffer + 4);
 			
 		} else if(!strncmp(auxbuffer, "SYSS:", 5)) {
-			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
 																				FW_VERSION, (unsigned int) xPortGetFreeHeapSize(),
-																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration,
-																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(custom_code_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle), (unsigned int)uxTaskGetStackHighWaterMark(blink_task_handle));
+																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration, mqtt_cycle_duration,
+																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle),
+																				(unsigned int)uxTaskGetStackHighWaterMark(custom_code_task_handle),
+																				(unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle),
+																				(unsigned int)uxTaskGetStackHighWaterMark(mqtt_task_handle));
 			
 			websocket_client_write(logged_client_pcb, buffer, response_len);
 			

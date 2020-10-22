@@ -24,6 +24,7 @@
 
 void telnet_task(void *pvParameters);
 void httpd_task(void *pvParameters);
+void mqtt_task(void *pvParameters);
 void module_manager_task(void *pvParameters);
 void custom_code_task(void *pvParameters);
 
@@ -38,7 +39,7 @@ char config_wifi_ap_password[CONFIG_STR_SIZE];
 TaskHandle_t module_manager_task_handle = NULL;
 TaskHandle_t custom_code_task_handle = NULL;
 TaskHandle_t httpd_task_handle = NULL;
-TaskHandle_t blink_task_handle = NULL;
+TaskHandle_t mqtt_task_handle = NULL;
 
 void IRAM blink_task(void *pvParameters) {
 	int cycle = 0;
@@ -160,9 +161,10 @@ void user_init(void) {
 	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 5, &module_manager_task_handle);
 	xTaskCreate(&custom_code_task, "custom_code_task", 512, NULL, 4, &custom_code_task_handle);
 	xTaskCreate(&httpd_task, "http_task", 2048, NULL, 2, &httpd_task_handle);
-	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, &blink_task_handle);
+	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, NULL);
 	
-	if(ap_mode == 1) {
+	if(ap_mode)
 		xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 2, NULL);
-	}
+	else
+		xTaskCreate(&mqtt_task, "mqtt_task", 1024+512, NULL, 2, &mqtt_task_handle);
 }
