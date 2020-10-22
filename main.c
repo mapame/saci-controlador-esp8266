@@ -160,7 +160,7 @@ void user_init(void) {
 	
 	xTaskCreate(&module_manager_task, "module_manager_task", 512, NULL, 5, &module_manager_task_handle);
 	xTaskCreate(&custom_code_task, "custom_code_task", 512, NULL, 4, &custom_code_task_handle);
-	xTaskCreate(&httpd_task, "http_task", 2048, NULL, 2, &httpd_task_handle);
+	xTaskCreate(&httpd_task, "http_task", 1024, NULL, 3, &httpd_task_handle);
 	xTaskCreate(&blink_task, "blink_task", 256, NULL, 1, NULL);
 	
 	if(ap_mode)
