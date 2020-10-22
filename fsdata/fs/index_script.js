@@ -157,8 +157,8 @@ function wsOpen() {
 				statusText = "Versão do firmware: " + received.adv_system_status.fw_ver;
 				statusText += "\nMemória livre: " + received.adv_system_status.free_mem + " bytes";
 				statusText += "\nCiclo HTTP: " + received.adv_system_status.cycle_duration[0] + " ms";
-				statusText += "\nCiclo MM: " + received.adv_system_status.cycle_duration[0] + " ms";
-				statusText += "\nCiclo CC: " + received.adv_system_status.cycle_duration[0] + " ms";
+				statusText += "\nCiclo MM: " + received.adv_system_status.cycle_duration[1] + " ms";
+				statusText += "\nCiclo CC: " + received.adv_system_status.cycle_duration[2] + " ms";
 				
 				setTimeout(function(){ alert(statusText); }, 10);
 			}
@@ -482,7 +482,7 @@ function showLoadingModal(showForSecs, text) {
 	document.getElementById("loading-modal").style.display = "";
 	
 	if(typeof showForSecs === "number" && showForSecs > 0) {
-		setTimeout(hideLoadingModal(), showForSecs * 1000);
+		setTimeout(hideLoadingModal, showForSecs * 1000);
 	}
 }
 
@@ -718,9 +718,9 @@ function dashboardButtonCommand(button_element) {
 	
 	parameterString = "DBTN:" + button_element.dataset.button_command;
 	
-	showLoadingModal(3, "Executando comando...");
-	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
+	
+	disableDashboardButtons();
 }
 
 function updateSystemTime() {
