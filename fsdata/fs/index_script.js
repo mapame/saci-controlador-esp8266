@@ -692,7 +692,7 @@ function changeChannelValue(valueElement) {
 	
 	parameterString = "MWR:" + valueElement.dataset.address + ":" + valueElement.dataset.channel + ":" + valueElement.dataset.port + ":" + newValue;
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 
 }
 
@@ -720,7 +720,7 @@ function dashboardButtonCommand(button_element) {
 	
 	showLoadingModal(3, "Executando comando...");
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 }
 
 function updateSystemTime() {
@@ -739,7 +739,7 @@ function updateSystemTime() {
 	
 	parameterString = "TUP:" + dateobj.getTime() / 1000;
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 }
 
 function restartSystem() {
@@ -753,7 +753,7 @@ function restartSystem() {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"RST:"}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"RST:"}));
 }
 
 function firmwareUpdate() {
@@ -779,7 +779,7 @@ function firmwareUpdate() {
 	
 	parameterString = "OTA:" + host;
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 	
 	clearTimeout(receiveTimeoutInterval);
 	
@@ -793,7 +793,7 @@ function showSystemStats() {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"SYSS:"}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"SYSS:"}));
 }
 
 function requestConfigInfo() {
@@ -809,7 +809,7 @@ function requestConfigInfo() {
 	
 	configInfoRequested = true;
 	
-	ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":"CFGI:"}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"CFGI:"}));
 }
 
 function saveConfig() {
@@ -862,7 +862,7 @@ function saveConfig() {
 		
 		parameterString = "CFGW:" + input_elements[i_n].dataset.config_name + ":" + input_elements[i_n].value;
 		
-		ws.send(JSON.stringify({"key":key,"op":"client-action","parameters":parameterString}));
+		ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 		
 		sentValues++;
 		

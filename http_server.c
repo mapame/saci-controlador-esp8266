@@ -8,6 +8,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <message_buffer.h>
+#include <queue.h>
 
 #include <httpd/httpd.h>
 #include "http_client_ota.h"
@@ -30,6 +31,9 @@ extern TaskHandle_t module_manager_task_handle;
 extern TaskHandle_t custom_code_task_handle;
 extern TaskHandle_t httpd_task_handle;
 extern TaskHandle_t blink_task_handle;
+
+extern QueueHandle_t cc_command_queue;
+
 
 MessageBufferHandle_t client_action_buffer = NULL;
 
@@ -575,6 +579,15 @@ int client_action_update_time(char *parameters) {
 	return 0;
 }
 
+int client_action_dashboard_button(char *parameters) {
+	if(parameters == NULL)
+		return -1;
+	
+	xQueueSend(cc_command_queue, (void *)parameters, pdMS_TO_TICKS(500));
+	
+	return 0;
+}
+
 int client_action_ota(char *parameters, const char **message_ptr) {
 	char *saveptr = NULL;
 	ota_info http_ota_info;
@@ -698,12 +711,14 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
 			
 		} else if(!strncmp(auxbuffer, "CFGW:", 5)) {
-			int index;
+			int result;
 			
-			index = client_action_config_write(auxbuffer + 5);
+			result = client_action_config_write(auxbuffer + 5);
 			
-			if(index >= 0)
-				send_config_values(logged_client_pcb, index, buffer, buffer_len);
+			if(result >= 0)
+				send_config_values(logged_client_pcb, result, buffer, buffer_len);
+		} else if(!strncmp(auxbuffer, "DBTN:", 5)) {
+			client_action_dashboard_button(auxbuffer + 5);
 		}
 	}
 }
@@ -764,7 +779,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 		response_len = snprintf(response, sizeof(response), "{\"server_notification\":\"invalid_key\"}");
 		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
 		
-	} else if(!strcmp(optxt, "client-action")) {
+	} else if(!strcmp(optxt, "action")) {
 		if(mjson_get_string((char*)data, data_len, "$.parameters", aux, 128) < 3)
 			return;
 		
