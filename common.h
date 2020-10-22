@@ -1,4 +1,4 @@
-#define FW_VERSION "131"
+#define FW_VERSION "132"
 
 //#define DEBUG
 
@@ -25,6 +25,7 @@
 #define MAX_MODULE_QTY 32
 
 #define WIFI_AP_SSID "SACI_AP"
-#define WIFI_AP_DEFAULT_PASSWORD "SACI1234"
 
-extern char ap_mode;
+extern int ap_mode;
+
+extern int config_diagnostic_mode;

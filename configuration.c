@@ -8,16 +8,20 @@
 #include "configuration.h"
 
 
-int config_diagnostic_mode;
+extern int config_diagnostic_mode;
 
-char config_webui_password[CONFIG_STR_SIZE];
-char config_wifi_ssid[CONFIG_STR_SIZE];
-char config_wifi_password[CONFIG_STR_SIZE];
-char config_wifi_ap_password[CONFIG_STR_SIZE];
-char config_thingspeak_channel_id[CONFIG_STR_SIZE];
-char config_thingspeak_channel_key[CONFIG_STR_SIZE];
-char config_telegram_bot_token[CONFIG_STR_SIZE];
-char config_telegram_group_id[CONFIG_STR_SIZE];
+extern char config_webui_password[CONFIG_STR_SIZE];
+
+extern char config_wifi_ssid[CONFIG_STR_SIZE];
+extern char config_wifi_password[CONFIG_STR_SIZE];
+extern char config_wifi_ap_password[CONFIG_STR_SIZE];
+
+extern char config_mqtt_hostname[CONFIG_STR_SIZE];
+extern char config_mqtt_port[CONFIG_STR_SIZE];
+extern char config_mqtt_username[CONFIG_STR_SIZE];
+extern char config_mqtt_password[CONFIG_STR_SIZE];
+extern char config_mqtt_clientid[CONFIG_STR_SIZE];
+extern char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 
 
 const config_info_t base_config_table[] = {
@@ -26,13 +30,17 @@ const config_info_t base_config_table[] = {
 	{"wifi_ssid",				"", 'T', "",				1, 32, 1, (void*) &config_wifi_ssid},
 	{"wifi_password",			"", 'T', "",				1, 63, 1, (void*) &config_wifi_password},
 	{"wifi_ap_password",		"", 'T', "1234SACI",		8, 32, 1, (void*) &config_wifi_ap_password},
-	{"thingspeak_channel_id",	"", 'T', "",				0, 63, 0, (void*) &config_thingspeak_channel_id},
-	{"thingspeak_channel_key",	"", 'T', "",				0, 63, 0, (void*) &config_thingspeak_channel_key},
-	{"telegram_bot_token",		"", 'T', "",				0, 63, 0, (void*) &config_telegram_bot_token},
-	{"telegram_group_id",		"", 'T', "",				0, 63, 0, (void*) &config_telegram_group_id},
+	{"mqtt_hostname",			"", 'T', "io.adafruit.com",	6, 63, 1, (void*) &config_mqtt_hostname},
+	{"mqtt_port",				"", 'T', "8883",			2,  5, 1, (void*) &config_mqtt_port},
+	{"mqtt_username",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_username},
+	{"mqtt_password",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_password},
+	{"mqtt_clientid",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_clientid},
+	{"mqtt_topic_prefix",		"", 'T', "",				0, 63, 1, (void*) &config_mqtt_topic_prefix},
 };
 
 const int base_config_table_qty = sizeof(base_config_table) / sizeof(config_info_t);
+
+extern const config_info_t extended_config_table[];
 
 
 static int convert_text_to_int_list(const char *text, int min, int max, int_list_t *list) {

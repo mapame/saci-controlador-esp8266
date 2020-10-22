@@ -103,32 +103,37 @@
 		</div>
 		
 		<div class="siimple-form">
-			<div class="siimple-form-title">Thingspeak</div>
+			<div class="siimple-form-title">MQTT</div>
 			
 			<div class="siimple-field">
-				<div class="siimple-field-label">ID do canal</div>
-				<input id="configuration-input-thingspeak_channel_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
-				<div class="siimple-field-helper">Identificador do canal</div>
+				<div class="siimple-field-label">Endereço</div>
+				<input id="configuration-input-mqtt_hostname" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Hostname do broker MQTT</div>
 			</div>
 			<div class="siimple-field">
-				<div class="siimple-field-label">API key do canal</div>
-				<input id="configuration-input-thingspeak_channel_key" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
-				<div class="siimple-field-helper">Chave de acesso do canal</div>
-			</div>
-		</div>
-		
-		<div class="siimple-form">
-			<div class="siimple-form-title">Telegram</div>
-			
-			<div class="siimple-field">
-				<div class="siimple-field-label">Token do bot</div>
-				<input id="configuration-input-telegram_bot_token" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
-				<div class="siimple-field-helper">Token para controle do bot</div>
+				<div class="siimple-field-label">Porta</div>
+				<input id="configuration-input-mqtt_port" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Porta do broker MQTT</div>
 			</div>
 			<div class="siimple-field">
-				<div class="siimple-field-label">ID do grupo</div>
-				<input id="configuration-input-telegram_group_id" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
-				<div class="siimple-field-helper">Identificador do grupo autorizado a se comunicar com o bot</div>
+				<div class="siimple-field-label">Usuário</div>
+				<input id="configuration-input-mqtt_username" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Usuário MQTT</div>
+			</div>
+			<div class="siimple-field">
+				<div class="siimple-field-label">Senha</div>
+				<input id="configuration-input-mqtt_password"type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Senha para o usuário MQTT</div>
+			</div>
+			<div class="siimple-field">
+				<div class="siimple-field-label">ID de cliente</div>
+				<input id="configuration-input-mqtt_clientid"type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">ID de cliente para conexão MQTT</div>
+			</div>
+			<div class="siimple-field">
+				<div class="siimple-field-label">Prefixo dos tópicos</div>
+				<input id="configuration-input-mqtt_topic_prefix"type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Prefixo para tópicos</div>
 			</div>
 		</div>
 		

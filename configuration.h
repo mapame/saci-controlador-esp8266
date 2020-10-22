@@ -17,22 +17,9 @@ typedef struct int_list_s {
 	int *values;
 } int_list_t;
 
+
 extern const int base_config_table_qty;
-extern const config_info_t base_config_table[];
-
 extern const int extended_config_table_qty;
-extern const config_info_t extended_config_table[];
-
-extern int config_diagnostic_mode;
-
-extern char config_webui_password[CONFIG_STR_SIZE];
-extern char config_wifi_ssid[CONFIG_STR_SIZE];
-extern char config_wifi_password[CONFIG_STR_SIZE];
-extern char config_wifi_ap_password[CONFIG_STR_SIZE];
-extern char config_thingspeak_channel_id[CONFIG_STR_SIZE];
-extern char config_thingspeak_channel_key[CONFIG_STR_SIZE];
-extern char config_telegram_bot_token[CONFIG_STR_SIZE];
-extern char config_telegram_group_id[CONFIG_STR_SIZE];
 
 
 int configuration_get_index(const char *name);

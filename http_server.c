@@ -34,6 +34,7 @@ extern TaskHandle_t blink_task_handle;
 
 extern QueueHandle_t cc_command_queue;
 
+char config_webui_password[CONFIG_STR_SIZE];
 
 MessageBufferHandle_t client_action_buffer = NULL;
 

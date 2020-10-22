@@ -13,7 +13,6 @@
 
 #include "common.h"
 #include "comm.h"
-#include "configuration.h"
 #include "module_manager.h"
 
 typedef struct {

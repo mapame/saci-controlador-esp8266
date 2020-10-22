@@ -21,12 +21,19 @@
 #include "module_manager.h"
 #include "comm.h"
 
-char ap_mode = 0;
 
 void telnet_task(void *pvParameters);
 void httpd_task(void *pvParameters);
 void module_manager_task(void *pvParameters);
 void custom_code_task(void *pvParameters);
+
+
+int ap_mode = 0;
+
+int config_diagnostic_mode;
+char config_wifi_ssid[CONFIG_STR_SIZE];
+char config_wifi_password[CONFIG_STR_SIZE];
+char config_wifi_ap_password[CONFIG_STR_SIZE];
 
 TaskHandle_t module_manager_task_handle = NULL;
 TaskHandle_t custom_code_task_handle = NULL;
@@ -99,6 +106,7 @@ void user_init(void) {
 			if(button++ == 50) {
 				sysparam_set_string("wifi_password", "\0");
 				sysparam_set_string("wifi_ap_password", "\0");
+				sysparam_set_string("webui_password", "\0");
 				
 				gpio_write(LED_R_PIN, 1);
 				gpio_write(LED_G_PIN, 1);
@@ -124,11 +132,7 @@ void user_init(void) {
 		sdk_wifi_set_ip_info(1, &ap_ip);
 		
 		strcpy((char *)ap_config.ssid, WIFI_AP_SSID);
-		
-		if(strlen(config_wifi_ap_password) >= 8)
-			strcpy((char *)ap_config.password, config_wifi_ap_password);
-		else
-			strcpy((char *)ap_config.password, WIFI_AP_DEFAULT_PASSWORD);
+		strcpy((char *)ap_config.password, config_wifi_ap_password);
 		
 		ap_config.ssid_len = strlen(WIFI_AP_SSID);
 		ap_config.ssid_hidden = 0;
