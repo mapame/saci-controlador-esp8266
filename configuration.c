@@ -16,8 +16,6 @@ extern char config_wifi_ssid[CONFIG_STR_SIZE];
 extern char config_wifi_password[CONFIG_STR_SIZE];
 extern char config_wifi_ap_password[CONFIG_STR_SIZE];
 
-extern char config_mqtt_hostname[CONFIG_STR_SIZE];
-extern char config_mqtt_port[CONFIG_STR_SIZE];
 extern char config_mqtt_username[CONFIG_STR_SIZE];
 extern char config_mqtt_password[CONFIG_STR_SIZE];
 extern char config_mqtt_clientid[CONFIG_STR_SIZE];
