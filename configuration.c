@@ -30,8 +30,6 @@ const config_info_t base_config_table[] = {
 	{"wifi_ssid",				"", 'T', "",				1, 32, 1, (void*) &config_wifi_ssid},
 	{"wifi_password",			"", 'T', "",				1, 63, 1, (void*) &config_wifi_password},
 	{"wifi_ap_password",		"", 'T', "1234SACI",		8, 32, 1, (void*) &config_wifi_ap_password},
-	{"mqtt_hostname",			"", 'T', "io.adafruit.com",	6, 63, 1, (void*) &config_mqtt_hostname},
-	{"mqtt_port",				"", 'T', "8883",			2,  5, 1, (void*) &config_mqtt_port},
 	{"mqtt_username",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_username},
 	{"mqtt_password",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_password},
 	{"mqtt_clientid",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_clientid},

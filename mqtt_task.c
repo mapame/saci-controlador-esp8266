@@ -15,6 +15,8 @@
 
 #include "tls_tas.h"
 
+#define MQTT_HOSTNAME "io.adafruit.com"
+#define MQTT_PORT "8883"
 
 typedef struct mqtt_subscription_s {
 	char topic_name[64];
@@ -30,8 +32,6 @@ const mqtt_subscription_t sub_list[] = {
 	{"", 0, NULL}
 };
 
-char config_mqtt_hostname[CONFIG_STR_SIZE];
-char config_mqtt_port[CONFIG_STR_SIZE];
 char config_mqtt_username[CONFIG_STR_SIZE];
 char config_mqtt_password[CONFIG_STR_SIZE];
 char config_mqtt_clientid[CONFIG_STR_SIZE];
@@ -129,7 +129,7 @@ void mqtt_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		if(brssl_mqtt_connect(&ctx, config_mqtt_hostname, config_mqtt_port, rtc_time)!= 0) {
+		if(brssl_mqtt_connect(&ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
