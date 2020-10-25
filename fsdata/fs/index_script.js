@@ -813,6 +813,52 @@ function requestConfigInfo() {
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"CFGI:"}));
 }
 
+function checkConfigIntList(value, min, max) {
+	if(typeof value !== "string") {
+		return false;
+	}
+	
+	var listArray = value.split(",");
+	
+	for(let i = 0; i < listArray.length; i++) {
+		let asNumber = parseFloat(listArray[i]);
+		
+		if(asNumber != listArray[i] || asNumber > max || asNumber < min) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+function checkConfigNumber(value, min, max) {
+	if(typeof value !== "string") {
+		return false;
+	}
+	
+	let asNumber = parseFloat(value);
+	
+	if(asNumber != value || asNumber > max || asNumber < min) {
+		return false;
+	}
+	
+	return true;
+}
+
+function checkConfigText(value, min, max) {
+	if(typeof value !== "string") {
+		return false;
+	}
+	
+	let textByteCount = (new Blob([value]).size);
+	
+	if(textByteCount > max || textByteCount < min) {
+		return false;
+	}
+	
+	return true;
+}
+
 function saveConfig() {
 	var key = localStorage.getItem("access_key");
 	var input_elements = document.getElementsByClassName("configuration-input");
@@ -829,19 +875,33 @@ function saveConfig() {
 	}
 	
 	for(let i_n = 0; i_n < input_elements.length; i_n++) {
-		let valueType = input_elements[i_n].dataset.config_type;
-		let valueAsNumber = parseFloat(input_elements[i_n].value);
-		let valueToCompare;
+		let value = input_elements[i_n].value;
+		let min = input_elements[i_n].dataset.config_min;
+		let max = input_elements[i_n].dataset.config_max;
+		let result = false;
 		
-		if(valueType === "B" || input_elements[i_n].dataset.config_value === input_elements[i_n].value) {
+		if(input_elements[i_n].dataset.config_value === value) {
 			continue;
 		}
 		
-		valueToCompare = (valueType === "T") ? (new Blob([input_elements[i_n].value]).size) : valueAsNumber;
+		switch(input_elements[i_n].dataset.config_type) {
+			case "B":
+				result = true;
+				break;
+			case "T":
+				result = checkConfigText(value, min, max);
+				break;
+			case "L":
+				result = checkConfigIntList(value, min, max);
+				break;
+			case "I":
+			case "F":
+				result = checkConfigNumber(value, min, max);
+				break;
+		}
 		
-		if(((valueType === "I" || valueType === "F") && (isNaN(valueAsNumber) === true || valueAsNumber != input_elements[i_n].value)) || valueToCompare > input_elements[i_n].dataset.config_max || valueToCompare < input_elements[i_n].dataset.config_min) {
+		if(result === false) {
 			invalidValues++;
-			
 			input_elements[i_n].style.borderWidth = "1px";
 		}
 	}
