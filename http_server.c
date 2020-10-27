@@ -11,7 +11,6 @@
 #include <queue.h>
 
 #include <httpd/httpd.h>
-#include "http_client_ota.h"
 
 #include "libs/mjson.h"
 
@@ -20,6 +19,7 @@
 #include "module_manager.h"
 #include "configuration.h"
 #include "dashboard.h"
+#include "http_ota.h"
 
 #define MAX_CLIENT_QTY 3
 
@@ -592,73 +592,36 @@ int client_action_dashboard_button(char *parameters) {
 
 int client_action_ota(char *parameters, const char **message_ptr) {
 	char *saveptr = NULL;
-	ota_info http_ota_info;
-	const char default_ota_port[] = "8080";
-	const char default_ota_bin_filename[] = "/saci_firmware.bin";
-	const char default_ota_hash_filename[] = "/saci_firmware.sha256";
+	OTA_config_t ota_config;
 	OTA_err err;
 	
 	if(parameters == NULL)
 		return -1;
 	
-	http_ota_info.server = (const char*) strtok_r(parameters, ":", &saveptr);
+	ota_config.server = (const char*) strtok_r(parameters, ":", &saveptr);
 	
-	if(http_ota_info.server == NULL)
+	if(ota_config.server == NULL)
 		return -2;
 	
-	http_ota_info.port = (const char*) strtok_r(NULL, ":", &saveptr);
+	ota_config.port = (const char*) strtok_r(NULL, ":", &saveptr);
 	
-	if(http_ota_info.port == NULL)
-		http_ota_info.port = default_ota_port;
+	if(ota_config.port == NULL)
+		return -2;
 	
-	http_ota_info.binary_path = default_ota_bin_filename;
-	http_ota_info.sha256_path = default_ota_hash_filename;
+	ota_config.path = (const char*) strtok_r(NULL, ":", &saveptr);
 	
-	err = ota_update(&http_ota_info);
+	if(ota_config.path == NULL)
+		return -2;
 	
-	if(message_ptr != NULL) {
-		switch(err) {
-			case OTA_DNS_LOOKUP_FALLIED:
-				*message_ptr = (const char*) &("OTA_DNS_LOOKUP_FAILED");
-				break;
-			case OTA_SOCKET_ALLOCATION_FALLIED:
-				*message_ptr = (const char*) &("OTA_SOCKET_ALLOCATION_FAILED");
-				break;
-			case OTA_SOCKET_CONNECTION_FALLIED:
-				*message_ptr = (const char*) &("OTA_SOCKET_CONNECTION_FAILED");
-				break;
-			case OTA_SHA_DONT_MATCH:
-				*message_ptr = (const char*) &("OTA_SHA_DONT_MATCH");
-				break;
-			case OTA_REQUEST_SEND_FALLIED:
-				*message_ptr = (const char*) &("OTA_REQUEST_SEND_FAILED");
-				break;
-			case OTA_DOWLOAD_SIZE_NOT_MATCH:
-				*message_ptr = (const char*) &("OTA_DOWLOAD_SIZE_NOT_MATCH");
-				break;
-			case OTA_ONE_SLOT_ONLY:
-				*message_ptr = (const char*) &("OTA_ONE_SLOT_ONLY");
-				break;
-			case OTA_FAIL_SET_NEW_SLOT:
-				*message_ptr = (const char*) &("OTA_FAIL_SET_NEW_SLOT");
-				break;
-			case OTA_IMAGE_VERIFY_FALLIED:
-				*message_ptr = (const char*) &("OTA_IMAGE_VERIFY_FAILED");
-				break;
-			case OTA_UPDATE_DONE:
-				*message_ptr = (const char*) &("OTA_UPDATE_DONE");
-				break;
-			case OTA_HTTP_OK:
-				*message_ptr = (const char*) &("OTA_HTTP_OK");
-				break;
-			case OTA_HTTP_NOTFOUND:
-				*message_ptr = (const char*) &("OTA_HTTP_NOTFOUND");
-				break;
-			default:
-				*message_ptr = (const char*) &("OTA_UNKOWN_ERROR");
-				break;
-		}
-	}
+	ota_config.hash_str = (const char*) strtok_r(NULL, ":", &saveptr);
+	
+	if(ota_config.hash_str == NULL)
+		return -2;
+	
+	err = ota_update(&ota_config);
+	
+	if(message_ptr != NULL)
+		*message_ptr = ota_err_str(err);
 	
 	return (err == OTA_UPDATE_DONE) ? 0 : -3;
 }

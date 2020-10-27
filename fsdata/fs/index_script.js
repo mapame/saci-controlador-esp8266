@@ -760,25 +760,33 @@ function restartSystem() {
 function firmwareUpdate() {
 	var key = localStorage.getItem("access_key");
 	var fileHash;
-	var host;
+	var urlText;
+	var url;
 	var parameterString;
 	
 	if(key === null) {
 		return;
 	}
 	
-	host = window.prompt("Informe o host para download do arquivo.");
+	urlText = window.prompt("Informe a URL do arquivo de atualização.");
 	
-	if(host === null) {
+	if(urlText === null || urlText === "") {
 		return;
 	}
 	
-	if(host === "") {
-		addPageAlert("error", "Host invalido!");
+	url = new URL(urlText);
+	
+	if(typeof url === "undefined" || url.protocol === "" || url.hostname === "" || url.pathname === "" || url.hash === "") {
+		addPageAlert("error", "URL inválida.");
 		return;
 	}
 	
-	parameterString = "OTA:" + host;
+	if(url.protocol === "https:") {
+		addPageAlert("error", "HTTPS não é suportado.");
+		return;
+	}
+	
+	parameterString = "OTA:" + url.hostname + ":" + ((url.port === "") ? "80" : url.port) + ":" + url.pathname + ":" + url.hash.replace("#", "");
 	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 	
