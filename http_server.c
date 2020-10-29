@@ -643,8 +643,8 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			client_action_update_time(auxbuffer + 4);
 			
 		} else if(!strncmp(auxbuffer, "SYSS:", 5)) {
-			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
-																				FW_VERSION, (unsigned int) xPortGetFreeHeapSize(),
+			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"uptime\":%u,\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+																				FW_VERSION, (xTaskGetTickCount() / configTICK_RATE_HZ), (unsigned int) xPortGetFreeHeapSize(),
 																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration, mqtt_cycle_duration,
 																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle),
 																				(unsigned int)uxTaskGetStackHighWaterMark(custom_code_task_handle),
@@ -844,7 +844,7 @@ void httpd_task(void *pvParameters) {
 			rtc_get_temp(&rtc_temperature);
 			rtc_get_time(&rtc_time);
 			
-			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"uptime\":%u,\"temperature\":%.1f,\"time\":%u}", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000), rtc_temperature, (uint32_t) rtc_time);
+			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"temperature\":%.1f,\"time\":%u}", rtc_temperature, (uint32_t) rtc_time);
 			
 			websocket_all_clients_write(response_buffer, response_len);
 			

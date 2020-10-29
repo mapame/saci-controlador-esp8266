@@ -85,9 +85,15 @@ function wsOpen() {
 			if(typeof received.adv_system_status === "object") {
 				let statusText;
 				
+				let uptimeDays = Math.trunc(received.adv_system_status.uptime / 86400.0);
+				let uptimeHours = Math.trunc((received.adv_system_status.uptime % 86400.0) / 3600.0);
+				let uptimeMinutes = Math.trunc(((received.adv_system_status.uptime % 86400.0) % 3600.0) / 60.0);
+				let uptimeSeconds = received.adv_system_status.uptime % 60.0;
+				
 				console.log(received.adv_system_status);
 				
 				statusText = "Versão do firmware: " + received.adv_system_status.fw_ver;
+				statusText += "\nUptime: " + uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
 				statusText += "\nMemória livre: " + received.adv_system_status.free_mem + " bytes";
 				statusText += "\nCiclo HTTP: " + received.adv_system_status.cycle_duration[0] + " ms";
 				statusText += "\nCiclo MM: " + received.adv_system_status.cycle_duration[1] + " ms";
@@ -95,15 +101,6 @@ function wsOpen() {
 				statusText += "\nCiclo MQTT: " + received.adv_system_status.cycle_duration[3] + " ms";
 				
 				setTimeout(function(){ alert(statusText); }, 10);
-			}
-			
-			if(typeof received.uptime === "number") {
-				let uptimeDays = Math.trunc(received.uptime / 86400.0);
-				let uptimeHours = Math.trunc((received.uptime % 86400.0) / 3600.0);
-				let uptimeMinutes = Math.trunc(((received.uptime % 86400.0) % 3600.0) / 60.0);
-				let uptimeSeconds = received.uptime % 60.0;
-				
-				document.getElementById('page-title').title = "Uptime: " + uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
 			}
 			
 			if(typeof received.temperature === "number") {
