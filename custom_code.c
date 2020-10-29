@@ -85,7 +85,7 @@ void custom_code_task(void *pvParameters) {
 			if(!strncmp(command, "CMD_TESTE1", 32)) {
 				strcpy(text_teste_text2, "Botão 1 pressionado");
 			} else if(!strncmp(command, "CMD_TESTE2", 32)) {
-				strcpy(text_teste_text2, "Botão 1 pressionado");
+				strcpy(text_teste_text2, "Botão 2 pressionado");
 			}
 		}
 		

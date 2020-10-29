@@ -662,7 +662,7 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			if(result == 0)
 				response_len = snprintf(buffer, buffer_len, "{\"server_notification\":\"ota_done\"}");
 			else
-				response_len = snprintf(buffer, buffer_len, "{\"server_notification\":\"ota_failed\",\"ota_error\":\"%s\"}", ((result_msg == NULL) ? "" : result_msg));
+				response_len = snprintf(buffer, buffer_len, "{\"server_notification\":\"ota_failed\",\"details\":\"%s\"}", ((result_msg == NULL) ? "" : result_msg));
 			
 			websocket_client_write(logged_client_pcb, buffer, response_len);
 			
