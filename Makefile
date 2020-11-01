@@ -9,7 +9,7 @@ PROGRAM_SRC_DIR=. ./libs
 PROGRAM_INC_DIR=. ./libs
 EXTRA_CFLAGS=-I./fsdata
 
-EXTRA_COMPONENTS = extras/dhcpserver extras/rboot-ota extras/bearssl extras/mbedtls extras/httpd extras/ds3231 extras/i2c extras/http_client_ota
+EXTRA_COMPONENTS = extras/dhcpserver extras/rboot-ota extras/bearssl extras/mbedtls extras/httpd extras/ds3231 extras/i2c
 #ESPBAUD = 460800
 LIBS ?= gcc hal m
 include /mnt/HDD0A/Software/ESP8266/esp-open-rtos/common.mk
