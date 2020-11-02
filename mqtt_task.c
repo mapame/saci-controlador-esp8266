@@ -18,6 +18,11 @@
 #define MQTT_HOSTNAME "io.adafruit.com"
 #define MQTT_PORT "8883"
 
+#define MQTT_STATUS_TOPIC "status"
+#define MQTT_STATUS_ONLINE_MSG "Online"
+#define MQTT_STATUS_OFFLINE_MSG "Offline"
+#define MQTT_STATUS_FLAGS (MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN)
+
 typedef struct mqtt_subscription_s {
 	char topic_name[64];
 	int max_qos;
@@ -106,7 +111,7 @@ static void sub_callback(void** unused, struct mqtt_response_publish *received) 
 }
 
 void mqtt_task(void *pvParameters) {
-	uint8_t mqtt_connect_flags = 0;
+	uint8_t mqtt_connect_flags = MQTT_STATUS_FLAGS;
 	time_t rtc_time;
 	char full_topic_name[256];
 	int rc;
@@ -134,8 +139,10 @@ void mqtt_task(void *pvParameters) {
 			continue;
 		}
 		
+		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_STATUS_TOPIC);
+		
 		mqtt_init(&client, &ctx, mqtt_sendbuf, sizeof(mqtt_sendbuf), mqtt_recvbuf, sizeof(mqtt_recvbuf), sub_callback);
-		mqtt_connect(&client, config_mqtt_clientid, NULL, NULL, 0, config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
+		mqtt_connect(&client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG) + 1, config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
 		for(int i = 0; sub_list[i].queue != NULL; i++) {
 			snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, sub_list[i].topic_name);
@@ -149,7 +156,7 @@ void mqtt_task(void *pvParameters) {
 			continue;
 		}
 		
-		mqtt_task_publish_text("status", "Online", 0, 0);
+		mqtt_task_publish_text("status", MQTT_STATUS_ONLINE_MSG, 1, 0);
 		
 		while(1) {
 			start_time = sdk_system_get_time();
