@@ -149,6 +149,8 @@ void mqtt_task(void *pvParameters) {
 			continue;
 		}
 		
+		mqtt_task_publish_text("status", "Online", 0, 0);
+		
 		while(1) {
 			start_time = sdk_system_get_time();
 			
