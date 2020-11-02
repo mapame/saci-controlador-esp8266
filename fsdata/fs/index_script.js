@@ -296,8 +296,8 @@ function handleServerNotification(notification, details) {
 			break;
 			
 		case "restart":
-			addPageAlert("warning", "O controlador foi reiniciado, atualizando a página automaticamente em 5 segundos...");
-			setTimeout(document.location.reload.bind(window.location, false), 5000);
+			showLoadingModal(-1, "Reiniciando o sistema...");
+			setTimeout(document.location.reload.bind(window.location, false), 6000);
 			break;
 			
 		default:
