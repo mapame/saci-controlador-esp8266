@@ -120,7 +120,7 @@ OTA_err ota_update(OTA_config_t *ota_config) {
 	if (err != HTTP_OK)
 		return err;
 	
-	vTaskDelay(pdMS_TO_TICKS(300)); /* avoid wdt reset */
+	vTaskDelay(pdMS_TO_TICKS(500)); /* avoid wdt reset */
 	
 	if (!rboot_verify_image(rboot_config.roms[new_rom_slot], &image_length, NULL))
 		return OTA_IMAGE_VERIFY_FAILED;
@@ -139,6 +139,8 @@ OTA_err ota_update(OTA_config_t *ota_config) {
 		br_sha256_init(hash_ctx);
 		
 		rboot_digest_image(rboot_config.roms[new_rom_slot], image_length, (rboot_digest_update_fn)br_sha256_update, (void*)hash_ctx);
+		
+		vTaskDelay(pdMS_TO_TICKS(300)); /* avoid wdt reset */
 		
 		br_sha256_out(hash_ctx, hash_output);
 		
