@@ -71,7 +71,7 @@ int mqtt_task_publish_text(const char* topic, const char* text, int qos, int ret
 	
 	snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, topic);
 	
-	mqtt_publish(&client, full_topic_name, text, strlen(text) + 1, publish_flags);
+	mqtt_publish(&client, full_topic_name, text, strlen(text), publish_flags);
 	
 	/*
 	if(client.error != MQTT_OK) {
@@ -137,7 +137,7 @@ void mqtt_task(void *pvParameters) {
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_STATUS_TOPIC);
 		
 		mqtt_init(&client, &ctx, mqtt_sendbuf, sizeof(mqtt_sendbuf), mqtt_recvbuf, sizeof(mqtt_recvbuf), sub_callback);
-		mqtt_connect(&client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG) + 1, config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
+		mqtt_connect(&client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
 		for(int i = 0; sub_list[i].queue != NULL; i++) {
 			snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, sub_list[i].topic_name);
