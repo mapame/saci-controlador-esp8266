@@ -21,7 +21,6 @@
 #define MQTT_STATUS_TOPIC "status"
 #define MQTT_STATUS_ONLINE_MSG "Online"
 #define MQTT_STATUS_OFFLINE_MSG "Offline"
-#define MQTT_STATUS_FLAGS (MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN)
 
 typedef struct mqtt_subscription_s {
 	char topic_name[64];
@@ -111,7 +110,7 @@ static void sub_callback(void** unused, struct mqtt_response_publish *received) 
 }
 
 void mqtt_task(void *pvParameters) {
-	uint8_t mqtt_connect_flags = MQTT_STATUS_FLAGS;
+	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN;
 	time_t rtc_time;
 	char full_topic_name[256];
 	int rc;
@@ -121,10 +120,6 @@ void mqtt_task(void *pvParameters) {
 	
 	
 	brssl_mqtt_init(&ctx, 512, TAs, TAs_NUM);
-	
-	if(strlen(config_mqtt_clientid) == 0) {
-		mqtt_connect_flags |= MQTT_CONNECT_CLEAN_SESSION;
-	}
 	
 	while(1) {
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
