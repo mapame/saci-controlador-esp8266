@@ -36,6 +36,8 @@ char config_wifi_ssid[CONFIG_STR_SIZE];
 char config_wifi_password[CONFIG_STR_SIZE];
 char config_wifi_ap_password[CONFIG_STR_SIZE];
 
+int config_mqtt_enabled;
+
 TaskHandle_t module_manager_task_handle = NULL;
 TaskHandle_t custom_code_task_handle = NULL;
 TaskHandle_t httpd_task_handle = NULL;
@@ -165,6 +167,6 @@ void user_init(void) {
 	
 	if(ap_mode)
 		xTaskCreate(&telnet_task, "telnet_task", 512, NULL, 2, NULL);
-	else
+	else if(config_mqtt_enabled)
 		xTaskCreate(&mqtt_task, "mqtt_task", 1024+512, NULL, 2, &mqtt_task_handle);
 }

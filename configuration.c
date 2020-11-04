@@ -16,6 +16,7 @@ extern char config_wifi_ssid[CONFIG_STR_SIZE];
 extern char config_wifi_password[CONFIG_STR_SIZE];
 extern char config_wifi_ap_password[CONFIG_STR_SIZE];
 
+extern int config_mqtt_enabled;
 extern char config_mqtt_username[CONFIG_STR_SIZE];
 extern char config_mqtt_password[CONFIG_STR_SIZE];
 extern char config_mqtt_clientid[CONFIG_STR_SIZE];
@@ -28,6 +29,7 @@ const config_info_t base_config_table[] = {
 	{"wifi_ssid",				"", 'T', "",				1, 32, 1, (void*) &config_wifi_ssid},
 	{"wifi_password",			"", 'T', "",				1, 63, 1, (void*) &config_wifi_password},
 	{"wifi_ap_password",		"", 'T', "1234SACI",		8, 32, 1, (void*) &config_wifi_ap_password},
+	{"mqtt_enabled",			"", 'B', "0",				0,  1, 1, (void*) &config_mqtt_enabled},
 	{"mqtt_username",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_username},
 	{"mqtt_password",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_password},
 	{"mqtt_clientid",			"", 'T', "",				0, 63, 1, (void*) &config_mqtt_clientid},
