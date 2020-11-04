@@ -15,6 +15,9 @@
 
 #include "tls_tas.h"
 
+#define MQTT_SEND_BUFFER_SIZE 1024
+#define MQTT_RECV_BUFFER_SIZE 1024
+
 #define MQTT_HOSTNAME "io.adafruit.com"
 #define MQTT_PORT "8883"
 
@@ -30,11 +33,11 @@ char config_mqtt_password[CONFIG_STR_SIZE];
 char config_mqtt_clientid[CONFIG_STR_SIZE];
 char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 
-bearssl_context ctx;
-struct mqtt_client client = {.error = MQTT_ERROR_CONNECT_NOT_CALLED};
+bearssl_context *ctx = NULL;
+struct mqtt_client *client = NULL;
 
-uint8_t mqtt_sendbuf[1024];
-uint8_t mqtt_recvbuf[1024];
+uint8_t *mqtt_sendbuf = NULL;
+uint8_t *mqtt_recvbuf = NULL;
 
 float mqtt_cycle_duration;
 
@@ -46,7 +49,7 @@ int mqtt_task_publish_text(const char* topic, const char* text, int qos, int ret
 	if(topic == NULL || text == NULL)
 		return -1;
 	
-	if(client.error != MQTT_OK)
+	if(client == NULL || client->error != MQTT_OK)
 		return -2;
 	
 	if(retain)
@@ -61,15 +64,15 @@ int mqtt_task_publish_text(const char* topic, const char* text, int qos, int ret
 	
 	snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, topic);
 	
-	mqtt_publish(&client, full_topic_name, text, strlen(text), publish_flags);
+	mqtt_publish(client, full_topic_name, text, strlen(text), publish_flags);
 	
 	/*
-	if(client.error != MQTT_OK) {
-		printf("MQTT Error: %s\n", mqtt_error_str(client.error));
+	if(client->error != MQTT_OK) {
+		printf("MQTT Error: %s\n", mqtt_error_str(client->error));
 	}
 	*/
 	
-	return (client.error == MQTT_OK) ? 0 : -3;
+	return (client->error == MQTT_OK) ? 0 : -3;
 }
 
 int mqtt_task_publish_int(const char* topic, int value, int qos, int retain) {
@@ -110,8 +113,17 @@ void mqtt_task(void *pvParameters) {
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
 	
+	while(ctx == NULL || client == NULL || mqtt_sendbuf == NULL || mqtt_recvbuf == NULL) {
+		ctx = (bearssl_context*) realloc(ctx, sizeof(bearssl_context));
+		client = (struct mqtt_client*) realloc(client, sizeof(struct mqtt_client));
+		
+		mqtt_sendbuf = (uint8_t*) realloc(mqtt_sendbuf, sizeof(uint8_t) * MQTT_SEND_BUFFER_SIZE);
+		mqtt_recvbuf = (uint8_t*) realloc(mqtt_recvbuf, sizeof(uint8_t) * MQTT_RECV_BUFFER_SIZE);
+		
+		vTaskDelay(pdMS_TO_TICKS(500));
+	}
 	
-	brssl_mqtt_init(&ctx, 512, TAs, TAs_NUM);
+	brssl_mqtt_init(ctx, 512, TAs, TAs_NUM);
 	
 	while(1) {
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
@@ -121,22 +133,22 @@ void mqtt_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		if(brssl_mqtt_connect(&ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
+		if(brssl_mqtt_connect(ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
 		
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_STATUS_TOPIC);
 		
-		mqtt_init(&client, &ctx, mqtt_sendbuf, sizeof(mqtt_sendbuf), mqtt_recvbuf, sizeof(mqtt_recvbuf), sub_callback);
-		mqtt_connect(&client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
+		mqtt_init(client, ctx, mqtt_sendbuf, MQTT_SEND_BUFFER_SIZE, mqtt_recvbuf, MQTT_RECV_BUFFER_SIZE, sub_callback);
+		mqtt_connect(client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, "comandos");
-		mqtt_subscribe(&client, full_topic_name,0);
+		mqtt_subscribe(client, full_topic_name, 0);
 		
-		if(client.error != MQTT_OK) {
-			debug("MQTT error: %s\n", mqtt_error_str(client.error));
-			brssl_mqtt_close(&ctx);
+		if(client->error != MQTT_OK) {
+			debug("MQTT error: %s\n", mqtt_error_str(client->error));
+			brssl_mqtt_close(ctx);
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
@@ -146,13 +158,13 @@ void mqtt_task(void *pvParameters) {
 		while(1) {
 			start_time = sdk_system_get_time();
 			
-			rc = mqtt_sync(&client);
+			rc = mqtt_sync(client);
 			
 			if(rc != MQTT_OK) {
 				debug("MQTT error: %s\n", mqtt_error_str(rc));
-				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&ctx.cc.eng));
+				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&(ctx->cc.eng)));
 				
-				brssl_mqtt_close(&ctx);
+				brssl_mqtt_close(ctx);
 				break;
 			}
 			
