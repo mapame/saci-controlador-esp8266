@@ -22,19 +22,8 @@
 #define MQTT_STATUS_ONLINE_MSG "Online"
 #define MQTT_STATUS_OFFLINE_MSG "Offline"
 
-typedef struct mqtt_subscription_s {
-	char topic_name[64];
-	int max_qos;
-	QueueHandle_t *queue;
-} mqtt_subscription_t;
-
 
 extern QueueHandle_t cc_command_queue;
-
-const mqtt_subscription_t sub_list[] = {
-	{"comandos", 0, &cc_command_queue},
-	{"", 0, NULL}
-};
 
 char config_mqtt_username[CONFIG_STR_SIZE];
 char config_mqtt_password[CONFIG_STR_SIZE];
@@ -49,8 +38,9 @@ uint8_t mqtt_recvbuf[1024];
 
 float mqtt_cycle_duration;
 
+
 int mqtt_task_publish_text(const char* topic, const char* text, int qos, int retain) {
-	char full_topic_name[256];
+	char full_topic_name[128];
 	uint8_t publish_flags = 0;
 	
 	if(topic == NULL || text == NULL)
@@ -97,22 +87,24 @@ int mqtt_task_publish_float(const char* topic, float value, int qos, int retain)
 }
 
 static void sub_callback(void** unused, struct mqtt_response_publish *received) {
-	char full_topic_name[256];
+	int prefix_len = strlen(config_mqtt_topic_prefix);
+	char message_cpy[64];
 	
-	for(int i = 0; sub_list[i].queue != NULL; i++) {
-		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, sub_list[i].topic_name);
-		
-		if(!strncmp((char*)received->topic_name, full_topic_name, received->topic_name_size)) {
-			xQueueSend(*(sub_list[i].queue), received->application_message, 0);
-			break;
-		}
+	if(received->topic_name_size <= prefix_len || received->application_message_size >= sizeof(message_cpy))
+		return;
+	
+	memcpy(message_cpy, received->application_message, received->application_message_size);
+	message_cpy[received->application_message_size] = '\0';
+	
+	if(!strncmp(((char*)received->topic_name) + prefix_len, "comandos", received->topic_name_size - prefix_len)) {
+		xQueueSend(cc_command_queue, message_cpy, 0);
 	}
 }
 
 void mqtt_task(void *pvParameters) {
 	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN;
 	time_t rtc_time;
-	char full_topic_name[256];
+	char full_topic_name[128];
 	int rc;
 	
 	uint32_t start_time, end_time;
@@ -139,10 +131,8 @@ void mqtt_task(void *pvParameters) {
 		mqtt_init(&client, &ctx, mqtt_sendbuf, sizeof(mqtt_sendbuf), mqtt_recvbuf, sizeof(mqtt_recvbuf), sub_callback);
 		mqtt_connect(&client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
-		for(int i = 0; sub_list[i].queue != NULL; i++) {
-			snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, sub_list[i].topic_name);
-			mqtt_subscribe(&client, full_topic_name, sub_list[i].max_qos);
-		}
+		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, "comandos");
+		mqtt_subscribe(&client, full_topic_name,0);
 		
 		if(client.error != MQTT_OK) {
 			debug("MQTT error: %s\n", mqtt_error_str(client.error));
