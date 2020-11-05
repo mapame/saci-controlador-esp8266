@@ -107,9 +107,10 @@ void user_init(void) {
 			vTaskDelay(pdMS_TO_TICKS(1000));
 			
 			if(button++ == 50) {
-				sysparam_set_string("wifi_password", "\0");
-				sysparam_set_string("wifi_ap_password", "\0");
-				sysparam_set_string("webui_password", "\0");
+				
+				sysparam_set_data("wifi_password", NULL, 0, 0);
+				sysparam_set_data("wifi_ap_password", NULL, 0, 0);
+				sysparam_set_data("webui_password", NULL, 0, 0);
 				
 				gpio_write(LED_R_PIN, 1);
 				gpio_write(LED_G_PIN, 1);
@@ -117,6 +118,7 @@ void user_init(void) {
 		}
 	}
 	
+	configuration_cleanup();
 	configuration_load();
 	
 	if(button > 8 || strlen(config_wifi_ssid) < 1 || strlen(config_wifi_password) < 1) {

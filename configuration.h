@@ -27,4 +27,5 @@ int configuration_get_info(unsigned int index, const config_info_t **info_ptr);
 int configuration_read_value(unsigned int index, char *buffer, unsigned int buffer_len);
 int configuration_write_value(unsigned int index, const char *buffer);
 void configuration_load();
+void configuration_cleanup();
 

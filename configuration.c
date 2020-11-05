@@ -297,3 +297,19 @@ void configuration_load() {
 	
 }
 
+void configuration_cleanup() {
+	sysparam_iter_t iterator;
+	
+	if(sysparam_iter_start(&iterator) != SYSPARAM_OK)
+		return;
+	
+	while(1) {
+		if(sysparam_iter_next(&iterator) != SYSPARAM_OK)
+			break;
+		
+		if(configuration_get_index(iterator.key) < 0)
+			sysparam_set_data(iterator.key, NULL, 0, 0);
+	}
+	sysparam_iter_end(&iterator);
+}
+
