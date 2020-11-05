@@ -1,4 +1,4 @@
-#define FW_VERSION "140"
+#define FW_VERSION "141"
 
 //#define DEBUG
 
@@ -25,6 +25,8 @@
 #define MAX_MODULE_QTY 32
 
 #define WIFI_AP_SSID "SACI_AP"
+
+extern const char custom_code_version[];
 
 extern int ap_mode;
 

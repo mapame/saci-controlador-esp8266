@@ -86,6 +86,7 @@ void user_init(void) {
 	rtc_init();
 	
 	debug("Firmware version: "FW_VERSION"\n");
+	debug("Custom code version: %s\n", custom_code_version);
 	debug("Build date: "__DATE__" "__TIME__"\n");
 	
 	vTaskDelay(pdMS_TO_TICKS(100));

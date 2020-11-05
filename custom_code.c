@@ -21,6 +21,9 @@
 QueueHandle_t cc_command_queue = NULL;
 float cc_cycle_duration;
 
+
+const char custom_code_version[] = "dummy_1";
+
 float config_teste;
 char config_teste_texto[CONFIG_STR_SIZE];
 

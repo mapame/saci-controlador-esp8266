@@ -93,6 +93,7 @@ function wsOpen() {
 				console.log(received.adv_system_status);
 				
 				statusText = "Versão do firmware: " + received.adv_system_status.fw_ver;
+				statusText += "\nVersão do código customizado: " + received.adv_system_status.cc_ver;
 				statusText += "\nUptime: " + uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
 				statusText += "\nMemória livre: " + received.adv_system_status.free_mem + " bytes";
 				statusText += "\nCiclo HTTP: " + received.adv_system_status.cycle_duration[0] + " ms";
