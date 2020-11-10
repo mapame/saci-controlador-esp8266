@@ -33,8 +33,10 @@ char config_mqtt_password[CONFIG_STR_SIZE];
 char config_mqtt_clientid[CONFIG_STR_SIZE];
 char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 
-bearssl_context *ctx = NULL;
-struct mqtt_client *client = NULL;
+static int mqtt_running = 0;
+
+bearssl_context *brssl_ctx = NULL;
+struct mqtt_client *client_ctx = NULL;
 
 uint8_t *mqtt_sendbuf = NULL;
 uint8_t *mqtt_recvbuf = NULL;
@@ -49,7 +51,7 @@ int mqtt_task_publish_text(const char* topic, const char* text, int qos, int ret
 	if(topic == NULL || text == NULL)
 		return -1;
 	
-	if(client == NULL || client->error != MQTT_OK)
+	if(client_ctx == NULL || client_ctx->error != MQTT_OK)
 		return -2;
 	
 	if(retain)
@@ -64,15 +66,15 @@ int mqtt_task_publish_text(const char* topic, const char* text, int qos, int ret
 	
 	snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, topic);
 	
-	mqtt_publish(client, full_topic_name, text, strlen(text), publish_flags);
+	mqtt_publish(client_ctx, full_topic_name, text, strlen(text), publish_flags);
 	
 	/*
-	if(client->error != MQTT_OK) {
-		printf("MQTT Error: %s\n", mqtt_error_str(client->error));
+	if(client_ctx->error != MQTT_OK) {
+		printf("MQTT Error: %s\n", mqtt_error_str(client_ctx->error));
 	}
 	*/
 	
-	return (client->error == MQTT_OK) ? 0 : -3;
+	return (client_ctx->error == MQTT_OK) ? 0 : -3;
 }
 
 int mqtt_task_publish_int(const char* topic, int value, int qos, int retain) {
@@ -104,6 +106,10 @@ static void sub_callback(void** unused, struct mqtt_response_publish *received) 
 	}
 }
 
+void stop_mqtt_task() {
+	mqtt_running = -1;
+}
+
 void mqtt_task(void *pvParameters) {
 	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN;
 	time_t rtc_time;
@@ -113,9 +119,9 @@ void mqtt_task(void *pvParameters) {
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
 	
-	while(ctx == NULL || client == NULL || mqtt_sendbuf == NULL || mqtt_recvbuf == NULL) {
-		ctx = (bearssl_context*) realloc(ctx, sizeof(bearssl_context));
-		client = (struct mqtt_client*) realloc(client, sizeof(struct mqtt_client));
+	while(brssl_ctx == NULL || client_ctx == NULL || mqtt_sendbuf == NULL || mqtt_recvbuf == NULL) {
+		brssl_ctx = (bearssl_context*) realloc(brssl_ctx, sizeof(bearssl_context));
+		client_ctx = (struct mqtt_client*) realloc(client_ctx, sizeof(struct mqtt_client));
 		
 		mqtt_sendbuf = (uint8_t*) realloc(mqtt_sendbuf, sizeof(uint8_t) * MQTT_SEND_BUFFER_SIZE);
 		mqtt_recvbuf = (uint8_t*) realloc(mqtt_recvbuf, sizeof(uint8_t) * MQTT_RECV_BUFFER_SIZE);
@@ -123,9 +129,11 @@ void mqtt_task(void *pvParameters) {
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 	
-	brssl_mqtt_init(ctx, 512, TAs, TAs_NUM);
+	brssl_mqtt_init(brssl_ctx, 512, TAs, TAs_NUM);
 	
-	while(1) {
+	mqtt_running = 1;
+	
+	while(mqtt_running == 1) {
 		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
@@ -133,38 +141,38 @@ void mqtt_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		if(brssl_mqtt_connect(ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
+		if(brssl_mqtt_connect(brssl_ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
 		
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_STATUS_TOPIC);
 		
-		mqtt_init(client, ctx, mqtt_sendbuf, MQTT_SEND_BUFFER_SIZE, mqtt_recvbuf, MQTT_RECV_BUFFER_SIZE, sub_callback);
-		mqtt_connect(client, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
+		mqtt_init(client_ctx, brssl_ctx, mqtt_sendbuf, MQTT_SEND_BUFFER_SIZE, mqtt_recvbuf, MQTT_RECV_BUFFER_SIZE, sub_callback);
+		mqtt_connect(client_ctx, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, "comandos");
-		mqtt_subscribe(client, full_topic_name, 0);
+		mqtt_subscribe(client_ctx, full_topic_name, 0);
 		
-		if(client->error != MQTT_OK) {
-			debug("MQTT error: %s\n", mqtt_error_str(client->error));
-			brssl_mqtt_close(ctx);
+		if(client_ctx->error != MQTT_OK) {
+			debug("MQTT error: %s\n", mqtt_error_str(client_ctx->error));
+			brssl_mqtt_close(brssl_ctx);
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
 		
 		mqtt_task_publish_text("status", MQTT_STATUS_ONLINE_MSG, 1, 0);
 		
-		while(1) {
+		while(mqtt_running == 1) {
 			start_time = sdk_system_get_time();
 			
-			rc = mqtt_sync(client);
+			rc = mqtt_sync(client_ctx);
 			
 			if(rc != MQTT_OK) {
 				debug("MQTT error: %s\n", mqtt_error_str(rc));
-				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&(ctx->cc.eng)));
+				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&(brssl_ctx->cc.eng)));
 				
-				brssl_mqtt_close(ctx);
+				brssl_mqtt_close(brssl_ctx);
 				break;
 			}
 			
@@ -177,6 +185,26 @@ void mqtt_task(void *pvParameters) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
 		
-		vTaskDelay(pdMS_TO_TICKS(500));
+		if(mqtt_running == -1) {
+			mqtt_disconnect(client_ctx);
+			brssl_mqtt_close(brssl_ctx);
+			brssl_mqtt_free(brssl_ctx);
+		} else {
+			vTaskDelay(pdMS_TO_TICKS(500));
+		}
 	}
+	
+	free(brssl_ctx);
+	free(client_ctx);
+	free(mqtt_sendbuf);
+	free(mqtt_recvbuf);
+	
+	brssl_ctx = NULL;
+	client_ctx = NULL;
+	mqtt_sendbuf = NULL;
+	mqtt_recvbuf = NULL;
+	
+	mqtt_running = 0;
+	
+	vTaskDelete(NULL);
 }
