@@ -31,7 +31,7 @@ char config_mqtt_password[CONFIG_STR_SIZE];
 char config_mqtt_clientid[CONFIG_STR_SIZE];
 char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 
-static int mqtt_running = 0;
+static volatile int mqtt_running = 0;
 
 bearssl_context *brssl_ctx = NULL;
 struct mqtt_client *client_ctx = NULL;
@@ -91,11 +91,15 @@ int mqtt_task_publish_float(const char* topic, float value, int qos, int retain)
 
 static void sub_callback(void** unused, struct mqtt_response_publish *received) {
 	int prefix_len = strlen(config_mqtt_topic_prefix);
-	char message_cpy[64];
+	char message_cpy[32];
 	
 	if(received->retain_flag)
 		return; /* Ignore retained messages */
-	if(received->topic_name_size <= prefix_len || received->application_message_size >= sizeof(message_cpy))
+	
+	if(received->topic_name_size < prefix_len || received->application_message_size >= sizeof(message_cpy))
+		return;
+	
+	if(strncmp(((char*)received->topic_name), config_mqtt_topic_prefix, prefix_len))
 		return;
 	
 	memcpy(message_cpy, received->application_message, received->application_message_size);
