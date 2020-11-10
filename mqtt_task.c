@@ -93,6 +93,8 @@ static void sub_callback(void** unused, struct mqtt_response_publish *received) 
 	int prefix_len = strlen(config_mqtt_topic_prefix);
 	char message_cpy[64];
 	
+	if(received->retain_flag)
+		return; /* Ignore retained messages */
 	if(received->topic_name_size <= prefix_len || received->application_message_size >= sizeof(message_cpy))
 		return;
 	
