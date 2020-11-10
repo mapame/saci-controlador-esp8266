@@ -21,9 +21,7 @@
 #define MQTT_HOSTNAME "io.adafruit.com"
 #define MQTT_PORT "8883"
 
-#define MQTT_STATUS_TOPIC "status"
-#define MQTT_STATUS_ONLINE_MSG "Online"
-#define MQTT_STATUS_OFFLINE_MSG "Offline"
+#define MQTT_CONNECTION_STATUS_TOPIC "conn_status"
 
 
 extern QueueHandle_t cc_command_queue;
@@ -111,7 +109,7 @@ void stop_mqtt_task() {
 }
 
 void mqtt_task(void *pvParameters) {
-	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_0 | MQTT_CONNECT_WILL_RETAIN;
+	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_1 | MQTT_CONNECT_WILL_RETAIN;
 	time_t rtc_time;
 	char full_topic_name[128];
 	int rc;
@@ -146,10 +144,10 @@ void mqtt_task(void *pvParameters) {
 			continue;
 		}
 		
-		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_STATUS_TOPIC);
+		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_CONNECTION_STATUS_TOPIC);
 		
 		mqtt_init(client_ctx, brssl_ctx, mqtt_sendbuf, MQTT_SEND_BUFFER_SIZE, mqtt_recvbuf, MQTT_RECV_BUFFER_SIZE, sub_callback);
-		mqtt_connect(client_ctx, config_mqtt_clientid, full_topic_name, (const void*) &(MQTT_STATUS_OFFLINE_MSG), strlen(MQTT_STATUS_OFFLINE_MSG), config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
+		mqtt_connect(client_ctx, config_mqtt_clientid, full_topic_name, (const void*) &("offline"), 7, config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
 		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, "comandos");
 		mqtt_subscribe(client_ctx, full_topic_name, 0);
@@ -161,7 +159,7 @@ void mqtt_task(void *pvParameters) {
 			continue;
 		}
 		
-		mqtt_task_publish_text("status", MQTT_STATUS_ONLINE_MSG, 1, 0);
+		mqtt_task_publish_text(MQTT_CONNECTION_STATUS_TOPIC, "online", 1, 1);
 		
 		while(mqtt_running == 1) {
 			start_time = sdk_system_get_time();
