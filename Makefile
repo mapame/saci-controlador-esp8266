@@ -5,7 +5,7 @@ FLASH_SIZE = 32
 SPIFFS_BASE_ADDR = 0x302000
 SPIFFS_SIZE = 0xf2000
 
-PROGRAM_SRC_DIR=. ./libs
+PROGRAM_SRC_DIR=. ./libs ./custom_code
 PROGRAM_INC_DIR=. ./libs
 EXTRA_CFLAGS=-I./fsdata
 
