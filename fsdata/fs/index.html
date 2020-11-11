@@ -22,6 +22,38 @@
 		</div>
 	</div>
 	
+	<div id="sysinfo-modal" class="siimple-modal siimple-modal--small" style="display: none;">
+		<div class="siimple-modal-content">
+			<div class="siimple-modal-header">
+				<div class="siimple-modal-header-title">Informações de Sistema</div>
+				<div class="siimple-modal-header-close" onclick="closeSysInfoModal()"></div>
+			</div>
+			<div class="siimple-modal-body">
+				<div class="siimple-h6">Versão do Firmware</div>
+				<div id="sysinfo-fw-ver"></div>
+				<div class="siimple-h6">Tempo Ligado</div>
+				<div id="sysinfo-uptime"></div>
+				<div class="siimple-h6">Memória Livre</div>
+				<div id="sysinfo-free-heap"></div>
+				<div class="siimple-h6">Duração dos Ciclos</div>
+				<div class="siimple-list">
+					<div class="siimple-list-item">HTTP<div id="sysinfo-cyd-http" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">Module Manager<div id="sysinfo-cyd-mm" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">MQTT<div id="sysinfo-cyd-mqtt" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">Custom Code<div id="sysinfo-cyd-cc" class="siimple--float-right"></div></div>
+				</div>
+				<div class="siimple-h6">Stack High Water Mark</div>
+				<div class="siimple-list">
+					<div class="siimple-list-item">HTTP<div id="sysinfo-shwm-http" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">Module Manager<div id="sysinfo-shwm-mm" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">MQTT<div id="sysinfo-shwm-mqtt" class="siimple--float-right"></div></div>
+					<div class="siimple-list-item">Custom Code<div id="sysinfo-shwm-cc" class="siimple--float-right"></div></div>
+				</div>
+			</div>
+			<div class="siimple-modal-footer siimple--text-center"><div class="siimple-btn siimple-btn--primary" onclick="requestSystemInfo()">Atualizar</div></div>
+		</div>
+	</div>
+	
 	<div class="siimple-navbar siimple-navbar--large siimple-navbar--dark">
 		<a id="page-title" class="siimple-navbar-title" href=".">S.A.C.I.</a>
 		<div class="siimple--float-right" id="navbar-login" style="display: none;">
@@ -56,7 +88,7 @@
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="restartSystem()">Reiniciar</div>
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="updateSystemTime()">Ajustar Relógio</div>
 			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="firmwareUpdate()">Atualizar Firmware</div>
-			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="showSystemStats()">Informações do Sistema</div>
+			<div class="config-page-btns siimple-btn siimple-btn--primary" onclick="requestSystemInfo()">Informações do Sistema</div>
 		</div>
 		<div>
 			<div class="config-page-btns siimple-btn siimple-btn--success" onclick="saveConfig()">Salvar Configurações</div>

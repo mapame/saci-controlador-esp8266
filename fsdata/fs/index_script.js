@@ -82,26 +82,8 @@ function wsOpen() {
 				handleServerNotification(received.server_notification, received.details);
 			}
 			
-			if(typeof received.adv_system_status === "object") {
-				let statusText;
-				
-				let uptimeDays = Math.trunc(received.adv_system_status.uptime / 86400.0);
-				let uptimeHours = Math.trunc((received.adv_system_status.uptime % 86400.0) / 3600.0);
-				let uptimeMinutes = Math.trunc(((received.adv_system_status.uptime % 86400.0) % 3600.0) / 60.0);
-				let uptimeSeconds = received.adv_system_status.uptime % 60.0;
-				
-				console.log(received.adv_system_status);
-				
-				statusText = "Versão do firmware: " + received.adv_system_status.fw_ver;
-				statusText += "\nVersão do código customizado: " + received.adv_system_status.cc_ver;
-				statusText += "\nUptime: " + uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
-				statusText += "\nMemória livre: " + received.adv_system_status.free_mem + " bytes";
-				statusText += "\nCiclo HTTP: " + received.adv_system_status.cycle_duration[0] + " ms";
-				statusText += "\nCiclo MM: " + received.adv_system_status.cycle_duration[1] + " ms";
-				statusText += "\nCiclo CC: " + received.adv_system_status.cycle_duration[2] + " ms";
-				statusText += "\nCiclo MQTT: " + received.adv_system_status.cycle_duration[3] + " ms";
-				
-				setTimeout(function(){ alert(statusText); }, 10);
+			if(typeof received.system_info === "object") {
+				showSystemInfo(received.system_info);
 			}
 			
 			if(typeof received.temperature === "number") {
@@ -822,14 +804,44 @@ function firmwareUpdate() {
 	showLoadingModal(-1, "Atualizando o firmware...");
 }
 
-function showSystemStats() {
+function requestSystemInfo() {
 	var key = localStorage.getItem("access_key");
 	
 	if(key === null) {
 		return;
 	}
 	
-	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"SYSS:"}));
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"SYSI:"}));
+}
+
+function closeSysInfoModal() {
+	document.getElementById("sysinfo-modal").style.display = "none";
+}
+
+function showSystemInfo(system_info) {
+	var uptimeDays = Math.trunc(system_info.uptime / 86400.0);
+	var uptimeHours = Math.trunc((system_info.uptime % 86400.0) / 3600.0);
+	var uptimeMinutes = Math.trunc(((system_info.uptime % 86400.0) % 3600.0) / 60.0);
+	var uptimeSeconds = system_info.uptime % 60.0;
+	var uptimeText = uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
+	
+	document.getElementById("sysinfo-fw-ver").innerText = system_info.fw_ver + " / " + system_info.cc_ver;
+	document.getElementById("sysinfo-free-heap").innerText = system_info.free_heap + " bytes";
+	document.getElementById("sysinfo-uptime").innerText = uptimeText;
+	
+	document.getElementById("sysinfo-cyd-http").innerText = system_info.cycle_duration[0] + " ms";
+	document.getElementById("sysinfo-cyd-mm").innerText = system_info.cycle_duration[1] + " ms";
+	document.getElementById("sysinfo-cyd-cc").innerText = system_info.cycle_duration[2] + " ms";
+	document.getElementById("sysinfo-cyd-mqtt").innerText = system_info.cycle_duration[3] + " ms";
+	
+	document.getElementById("sysinfo-shwm-http").innerText = system_info.task_shwm[0] + " words";
+	document.getElementById("sysinfo-shwm-mm").innerText = system_info.task_shwm[1] + " words";
+	document.getElementById("sysinfo-shwm-cc").innerText = system_info.task_shwm[2] + " words";
+	document.getElementById("sysinfo-shwm-mqtt").innerText = system_info.task_shwm[3] + " words";
+	
+	document.getElementById("sysinfo-modal").style.display = "";
+	
+	console.info(JSON.stringify(system_info));
 }
 
 function requestConfigInfo() {

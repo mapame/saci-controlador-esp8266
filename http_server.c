@@ -642,14 +642,14 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 		} else if(!strncmp(auxbuffer, "TUP:", 4)) {
 			client_action_update_time(auxbuffer + 4);
 			
-		} else if(!strncmp(auxbuffer, "SYSS:", 5)) {
-			response_len = snprintf(buffer, buffer_len,	"{\"adv_system_status\":{\"fw_ver\":\"%s\",\"cc_ver\":\"%s\",\"uptime\":%u,\"free_mem\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+		} else if(!strncmp(auxbuffer, "SYSI:", 5)) {
+			response_len = snprintf(buffer, buffer_len,	"{\"system_info\":{\"fw_ver\":\"%s\",\"cc_ver\":\"%s\",\"uptime\":%u,\"free_heap\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
 																				FW_VERSION, custom_code_version,
 																				(xTaskGetTickCount() / configTICK_RATE_HZ), (unsigned int) xPortGetFreeHeapSize(),
 																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration, mqtt_cycle_duration,
+																				(unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle),
 																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle),
 																				(unsigned int)uxTaskGetStackHighWaterMark(custom_code_task_handle),
-																				(unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle),
 																				(unsigned int)uxTaskGetStackHighWaterMark(mqtt_task_handle));
 			
 			websocket_client_write(logged_client_pcb, buffer, response_len);
