@@ -18,14 +18,13 @@
 #define MQTT_SEND_BUFFER_SIZE 1024
 #define MQTT_RECV_BUFFER_SIZE 1024
 
-#define MQTT_HOSTNAME "io.adafruit.com"
-#define MQTT_PORT "8883"
-
 #define MQTT_CONNECTION_STATUS_TOPIC "conn_status"
 
 
 extern QueueHandle_t cc_command_queue;
 
+char config_mqtt_hostname[CONFIG_STR_SIZE];
+int config_mqtt_port;
 char config_mqtt_username[CONFIG_STR_SIZE];
 char config_mqtt_password[CONFIG_STR_SIZE];
 char config_mqtt_clientid[CONFIG_STR_SIZE];
@@ -116,12 +115,18 @@ void stop_mqtt_task() {
 
 void mqtt_task(void *pvParameters) {
 	uint8_t mqtt_connect_flags = MQTT_CONNECT_CLEAN_SESSION | MQTT_CONNECT_WILL_QOS_1 | MQTT_CONNECT_WILL_RETAIN;
+	char mqtt_port[6];
 	time_t rtc_time;
 	char full_topic_name[128];
 	int rc;
 	
 	uint32_t start_time, end_time;
 	int cycle_duration[3], cycle_count = 0;
+	
+	if(strlen(config_mqtt_hostname) < 5 || config_mqtt_port <= 0)
+		vTaskDelete(NULL);
+	
+	snprintf(mqtt_port, sizeof(mqtt_port), "%d", config_mqtt_port);
 	
 	while(brssl_ctx == NULL || client_ctx == NULL || mqtt_sendbuf == NULL || mqtt_recvbuf == NULL) {
 		brssl_ctx = (bearssl_context*) realloc(brssl_ctx, sizeof(bearssl_context));
@@ -145,7 +150,7 @@ void mqtt_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		if(brssl_mqtt_connect(brssl_ctx, MQTT_HOSTNAME, MQTT_PORT, rtc_time)!= 0) {
+		if(brssl_mqtt_connect(brssl_ctx, config_mqtt_hostname, mqtt_port, rtc_time)!= 0) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
