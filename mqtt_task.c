@@ -182,6 +182,7 @@ void mqtt_task(void *pvParameters) {
 				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&(brssl_ctx->cc.eng)));
 				
 				brssl_mqtt_close(brssl_ctx);
+				vTaskDelay(pdMS_TO_TICKS(500));
 				break;
 			}
 			
@@ -193,15 +194,11 @@ void mqtt_task(void *pvParameters) {
 			
 			vTaskDelay(pdMS_TO_TICKS(500));
 		}
-		
-		if(mqtt_running == -1) {
-			mqtt_disconnect(client_ctx);
-			brssl_mqtt_close(brssl_ctx);
-			brssl_mqtt_free(brssl_ctx);
-		} else {
-			vTaskDelay(pdMS_TO_TICKS(500));
-		}
 	}
+	
+	mqtt_disconnect(client_ctx);
+	brssl_mqtt_close(brssl_ctx);
+	brssl_mqtt_free(brssl_ctx);
 	
 	free(brssl_ctx);
 	free(client_ctx);
