@@ -135,6 +135,22 @@
 		</div>
 		
 		<div class="siimple-form">
+			<div class="siimple-form-title">Thingspeak</div>
+			<div class="siimple-field">
+				<div class="siimple-field-label">Habilitar</div>
+				<div class="siimple-switch">
+					<input id="configuration-input-ts_enabled" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
+					<label for="configuration-input-ts_enabled"></label>
+				</div>
+			</div>
+			<div class="siimple-field">
+				<div class="siimple-field-label">Chave de acesso do canal</div>
+				<input id="configuration-input-ts_ch_key" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Write API Key</div>
+			</div>
+		</div>
+		
+		<div class="siimple-form">
 			<div class="siimple-form-title">MQTT</div>
 			<div class="siimple-field">
 				<div class="siimple-field-label">Habilitar</div>

@@ -10,6 +10,7 @@
 #include "module_manager.h"
 #include "dashboard.h"
 #include "mqtt_task.h"
+#include "thingspeak.h"
 
 
 const char custom_code_version[] = "example_1";
@@ -33,6 +34,7 @@ char gauge_teste_text[8] = "0.0 %";
 char text_teste_text1[16] = "0 sec";
 char text_teste_text2[32] = "Hello World!";
 
+const float *thingspeak_values[8] = {&gauge_teste_value, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 const dashboard_item_t dashboard_itens[] = {
 	{0, {4, 6, 12},	"vertical_gauge",	"Memória Heap Livre",		{(void*)&gauge_teste_value, (void*)gauge_teste_text, NULL, NULL}},
@@ -66,10 +68,12 @@ int custom_code_loop(int counter, time_t rtc_time) {
 	gauge_teste_value = (((float)xPortGetFreeHeapSize()) / 81920.0) * 100.0;
 	snprintf(gauge_teste_text, sizeof(gauge_teste_text), "%.1f %%", gauge_teste_value);
 	
-	if(counter == 0)
-		mqtt_task_publish_float("heap", gauge_teste_value, 0, 0);
-	
 	snprintf(text_teste_text1, sizeof(text_teste_text1), "%u secs", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000));
+	
+	if(counter == 0 || counter == 15) {
+		mqtt_task_publish_float("heap", gauge_teste_value, 0, 0);
+		thingspeak_update(thingspeak_values, text_teste_text1);
+	}
 	
 	return 0;
 }

@@ -16,6 +16,9 @@ extern char config_wifi_ssid[CONFIG_STR_SIZE];
 extern char config_wifi_password[CONFIG_STR_SIZE];
 extern char config_wifi_ap_password[CONFIG_STR_SIZE];
 
+extern int config_thingspeak_enabled;
+extern char config_thingspeak_ch_key[CONFIG_STR_SIZE];
+
 extern int config_mqtt_enabled;
 extern char config_mqtt_hostname[CONFIG_STR_SIZE];
 extern int config_mqtt_port;
@@ -31,6 +34,8 @@ const config_info_t base_config_table[] = {
 	{"wifi_ssid",				"", 'T', "",				1, 32,		1, (void*) &config_wifi_ssid},
 	{"wifi_password",			"", 'T', "",				1, 63,		1, (void*) &config_wifi_password},
 	{"wifi_ap_password",		"", 'T', "1234SACI",		8, 32,		1, (void*) &config_wifi_ap_password},
+	{"ts_enabled",				"", 'B', "0",				0,  1,		0, (void*) &config_thingspeak_enabled},
+	{"ts_ch_key",				"", 'T', "",				0, 18,		0, (void*) &config_thingspeak_ch_key},
 	{"mqtt_enabled",			"", 'B', "0",				0,  1,		1, (void*) &config_mqtt_enabled},
 	{"mqtt_hostname",			"", 'T', "io.adafruit.com",	0, 63,		1, (void*) &config_mqtt_hostname},
 	{"mqtt_port",				"", 'I', "8883",			0, 65535,	1, (void*) &config_mqtt_port},
