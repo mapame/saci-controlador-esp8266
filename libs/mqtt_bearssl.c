@@ -66,13 +66,18 @@ static int socket_connect(const char *host, const char *port) {
 	if(getaddrinfo(host, port, &hints, &res) != 0 || res == NULL)
 		return -1;
 	
-	if((sockfd = socket(res->ai_family, res->ai_socktype, 0)) == -1)
+	if((sockfd = socket(res->ai_family, res->ai_socktype, 0)) == -1) {
+		freeaddrinfo(res);
 		return -1;
+	}
 	
 	if(connect(sockfd, res->ai_addr, res->ai_addrlen) != 0) {
 		close(sockfd);
+		freeaddrinfo(res);
 		return -1;
 	}
+	
+	freeaddrinfo(res);
 	
 	lwip_fcntl(sockfd, F_SETFL, O_NONBLOCK);
 	
