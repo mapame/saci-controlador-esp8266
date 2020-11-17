@@ -927,7 +927,7 @@ function saveConfig() {
 		let max = input_elements[i_n].dataset.config_max;
 		let result = false;
 		
-		if(input_elements[i_n].dataset.config_value === value) {
+		if(input_elements[i_n].dataset.config_value === value || value.length === 0) {
 			continue;
 		}
 		
@@ -954,7 +954,7 @@ function saveConfig() {
 	}
 	
 	if(invalidValues > 0) {
-		addPageAlert("error", "Existem campos de configuração estão com valores invalidos. (Quantidade: " + invalidValues + ")");
+		addPageAlert("error", "Existem campos de configuração estão com valores invalidos. (" + invalidValues + ")");
 		
 		return;
 	}
@@ -974,7 +974,7 @@ function saveConfig() {
 		
 		sentValues++;
 		
-		if(input_elements[i_n].dataset.config_req_restart === "Y") {
+		if(input_elements[i_n].dataset.config_req_restart === "Y" || input_elements[i_n].value.length === 0) {
 			requireRestart = true;
 		}
 	}

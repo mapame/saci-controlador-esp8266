@@ -167,6 +167,7 @@ int configuration_read_value(unsigned int index, char *buffer, unsigned int buff
 
 int configuration_write_value(unsigned int index, const char *buffer) {
 	const config_info_t *config_ptr;
+	
 	int tmp_i;
 	float tmp_f;
 	int_list_t tmp_l;
@@ -181,6 +182,11 @@ int configuration_write_value(unsigned int index, const char *buffer) {
 		config_ptr = &(base_config_table[index]);
 	else
 		config_ptr = &(extended_config_table[index - base_config_table_qty]);
+	
+	if(strlen(buffer) == 0) {
+		sysparam_set_data(config_ptr->name, NULL, 0, 0);
+		return 0;
+	}
 	
 	switch(config_ptr->type) {
 		case 'L':
