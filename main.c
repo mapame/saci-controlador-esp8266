@@ -176,6 +176,6 @@ void user_init(void) {
 	if(config_thingspeak_enabled && ap_mode == 0)
 		xTaskCreate(&thingspeak_task, "thingspeak_task", 512, NULL, 2, NULL);
 	
-	if(config_mqtt_enabled && ap_mode == 0)
+	if(config_mqtt_enabled && config_diagnostic_mode == 0 && ap_mode == 0)
 		xTaskCreate(&mqtt_task, "mqtt_task", 1280, NULL, 2, &mqtt_task_handle);
 }
