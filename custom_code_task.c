@@ -17,6 +17,7 @@
 #include "rtc.h"
 #include "dashboard.h"
 #include "mqtt_task.h"
+#include "thingspeak.h"
 
 #define COMMAND_QUEUE_DEPTH 10
 #define COMMAND_MAX_LEN 32
@@ -43,6 +44,11 @@ void custom_code_task(void *pvParameters) {
 	ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60*1000));
 	
 	if(config_diagnostic_mode) {
+		const float *thingspeak_values[8] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+		const char status_text[] = "Modo de diagnóstico";
+		
+		thingspeak_update(thingspeak_values, status_text);
+		
 		vTaskDelete(NULL);
 	}
 	
