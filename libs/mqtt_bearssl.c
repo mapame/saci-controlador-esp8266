@@ -85,6 +85,8 @@ static int socket_connect(const char *host, const char *port) {
 }
 
 int brssl_mqtt_init(bearssl_context *ctx, size_t ssl_buffer_size, const br_x509_trust_anchor *trust_anchors, size_t trust_anchors_num) {
+	ctx->counter = 0;
+	
 	ctx->brssl_ibuffer = (unsigned char*) malloc((ssl_buffer_size + 325 + 1) * sizeof(unsigned char));
 	ctx->brssl_obuffer = (unsigned char*) malloc((ssl_buffer_size + 85 + 1) * sizeof(unsigned char));
 	
@@ -110,7 +112,7 @@ int brssl_mqtt_init(bearssl_context *ctx, size_t ssl_buffer_size, const br_x509_
 }
 
 int brssl_mqtt_connect(bearssl_context *ctx, const char *host, const char *port, time_t timenow) {
-	if(br_ssl_client_reset(&ctx->cc, host, 0) == 0)
+	if(br_ssl_client_reset(&ctx->cc, host, ctx->counter) == 0)
 		return -1;
 	
 	br_x509_minimal_set_time(&ctx->xc, ((timenow / CLOCK_SECONDS_PER_DAY) + 719528), (timenow % CLOCK_SECONDS_PER_DAY));
@@ -131,6 +133,8 @@ int brssl_mqtt_close(bearssl_context *ctx) {
 		rc = close(ctx->fd);
 		ctx->fd = 0;
 	}
+	
+	ctx->counter++;
 	
 	return rc;
 }

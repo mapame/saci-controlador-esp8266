@@ -96,6 +96,7 @@ typedef SemaphoreHandle_t mqtt_pal_mutex_t;
 #define MQTT_PAL_MUTEX_UNLOCK(mtx_ptr) xSemaphoreGive(*(mtx_ptr));
 
 typedef struct _bearssl_context {
+	unsigned int counter;
 	br_ssl_client_context cc;
 	br_x509_minimal_context xc;
 	unsigned char *brssl_ibuffer;
