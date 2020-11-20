@@ -77,7 +77,7 @@ int custom_code_loop(int counter, time_t rtc_time) {
 		struct ip_info station_ip_info;
 		char ip_str[IP4ADDR_STRLEN_MAX];
 		
-		mqtt_task_publish_float("heap", gauge_teste_value, 0, 0);
+		mqtt_task_publish_float("heap", gauge_teste_value, 1, 0, 0);
 		
 		sdk_wifi_get_ip_info(STATION_IF, &station_ip_info);
 		snprintf(text_ts_status, sizeof(text_ts_status), "IP: %s | Uptime: %u s", ip4addr_ntoa_r(&station_ip_info.ip, ip_str, IP4ADDR_STRLEN_MAX), (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000));

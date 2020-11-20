@@ -81,10 +81,10 @@ int mqtt_task_publish_int(const char* topic, int value, int qos, int retain) {
 	return mqtt_task_publish_text(topic, aux, qos, retain);
 }
 
-int mqtt_task_publish_float(const char* topic, float value, int qos, int retain) {
+int mqtt_task_publish_float(const char* topic, float value, unsigned int precision, int qos, int retain) {
 	char aux[32];
 	
-	snprintf(aux, sizeof(aux), "%.5f", value);
+	snprintf(aux, sizeof(aux), "%.*f", precision, value);
 	return mqtt_task_publish_text(topic, aux, qos, retain);
 }
 
