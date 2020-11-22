@@ -627,7 +627,7 @@ int client_action_ota(char *parameters, const char **message_ptr) {
 }
 
 static inline void process_client_actions(char *buffer, unsigned int buffer_len) {
-	char auxbuffer[128];
+	char auxbuffer[150];
 	int response_len;
 	
 	while(!xMessageBufferIsEmpty(client_action_buffer)) {
@@ -695,7 +695,7 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, uint8_t mode) {
 	int client_i;
 	char optxt[32];
-	char aux[128];
+	char aux[150];
 	
 	char response[256];
 	int response_len;
@@ -749,7 +749,7 @@ void websocket_rcv_msg_cb(struct tcp_pcb *pcb, uint8_t *data, u16_t data_len, ui
 		websocket_write(pcb, (uint8_t*)response, response_len, WS_TEXT_MODE);
 		
 	} else if(!strcmp(optxt, "action")) {
-		if(mjson_get_string((char*)data, data_len, "$.parameters", aux, 128) < 3)
+		if(mjson_get_string((char*)data, data_len, "$.parameters", aux, sizeof(aux)) < 3)
 			return;
 		
 		xMessageBufferSend(client_action_buffer, (void*) &aux, strlen(aux) + 1, pdMS_TO_TICKS(200));

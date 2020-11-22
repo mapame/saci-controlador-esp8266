@@ -797,6 +797,11 @@ function firmwareUpdate() {
 	
 	parameterString = "OTA:" + url.hostname + ":" + ((url.port === "") ? "80" : url.port) + ":" + url.pathname + ":" + url.hash.replace("#", "");
 	
+	if(parameterString.length > 149) {
+		addPageAlert("error", "URL muito longa.");
+		return;
+	}
+	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 	
 	clearTimeout(receiveTimeoutInterval);
