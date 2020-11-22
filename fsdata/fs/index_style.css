@@ -16,7 +16,7 @@
 }
 
 .siimple-alert {
-	z-index: 9999;
+	z-index: 350;
 	overflow-wrap: break-word;
 	max-width: 700px;
 	margin-left: auto;
