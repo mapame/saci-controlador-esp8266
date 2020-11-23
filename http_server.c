@@ -794,7 +794,7 @@ void httpd_task(void *pvParameters) {
 	vTaskDelay(pdMS_TO_TICKS(100));
 	
 	for(;;) {
-		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
+		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP && ap_mode == 0) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
