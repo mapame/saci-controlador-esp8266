@@ -59,10 +59,10 @@ void custom_code_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		custom_code_loop(counter, rtc_time);
-		
 		if(xQueueReceive(cc_command_queue, (void *)command, 0) == pdPASS)
 			custom_code_command(command, sizeof(command));
+		
+		custom_code_loop(counter, rtc_time);
 		
 		end_time = sdk_system_get_time();
 		
