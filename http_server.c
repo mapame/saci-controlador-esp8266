@@ -283,6 +283,41 @@ static int create_dashboard_parameters_json(unsigned int dashboard_i, char *buff
 	return len;
 }
 
+static void send_config_forms(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
+	int result;
+	
+	unsigned int response_len;
+	
+	if(buffer == NULL || buffer_len < 20)
+		return;
+	
+	response_len = snprintf(buffer, buffer_len, "{\"config_forms\":{\"qty\":%d,\"titles\":[", config_form_qty);
+	
+	if(response_len >= buffer_len)
+		return;
+	
+	for(unsigned int i = 0; i < config_form_qty; i++) {
+		
+		result = snprintf(buffer + response_len, buffer_len - response_len, "\"%s\",", &(config_form_titles[i][0]));
+		
+		if(response_len + result + 3 - 1 >= buffer_len)
+			break;
+		
+		response_len += result;
+	}
+	
+	if(buffer[response_len - 1] == ',')
+		response_len--; // Remove last comma
+	
+	buffer[response_len++] = ']';
+	buffer[response_len++] = '}';
+	buffer[response_len++] = '}';
+	
+	websocket_client_write(pcb, buffer, response_len);
+	
+	vTaskDelay(pdMS_TO_TICKS(200));
+}
+
 static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
 	const config_info_t *config_info;
 	unsigned int response_len;
@@ -294,8 +329,8 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		if(configuration_get_info(config_index, &config_info) < 0)
 			continue;
 		
-		response_len = snprintf(buffer, buffer_len,	"{\"config_info\":{\"name\":\"%s\",\"dname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}",
-													config_info->name, config_info->dname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
+		response_len = snprintf(buffer, buffer_len,	"{\"config_info\":{\"formn\":%d,\"name\":\"%s\",\"dname\":\"%s\",\"type\":\"%c\",""\"min\":%.5f,\"max\":%.5f,\"req_restart\":\"%c\"}}",
+													config_info->formn, config_info->name, config_info->dname, config_info->type, config_info->min, config_info->max, (config_info->require_restart ? 'Y' : 'N'));
 		
 		if(response_len >= buffer_len)
 			continue;
@@ -672,6 +707,8 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			
 		} else if(!strncmp(auxbuffer, "CFGI:", 5)) {
 			const char done_message[] = "{\"server_notification\":\"config_info_done\"}";
+			
+			send_config_forms(logged_client_pcb, buffer, buffer_len);
 			
 			send_config_info(logged_client_pcb, buffer, buffer_len);
 			

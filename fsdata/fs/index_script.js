@@ -101,6 +101,10 @@ function wsOpen() {
 				updateModuleValues(received.module_data);
 			}
 			
+			if(typeof received.config_forms === "object") {
+				addConfigurationForms(received.config_forms.qty, received.config_forms.titles)
+			}
+			
 			if(typeof received.config_info === "object") {
 				addConfiguration(received.config_info);
 			}
@@ -317,12 +321,43 @@ function updateReceivedTime(received_time) {
 	}
 }
 
-function addConfiguration(config_info) {
-	let form = document.getElementById("custom-configuration-form");
+function addConfigurationForms(qty, titles) {
+	var config_page = document.getElementById("configuration-page");
 	
-	let input_element = document.getElementById("configuration-input-" + config_info.name);
+	if(typeof qty !== "number") {
+		return;
+	}
+	
+	for(let form_n = 0; form_n < qty; form_n++) {
+		let form_element = document.getElementById("configuration-page-form" + form_n);
+		
+		if(form_element === null) {
+			form_element = document.createElement("div");
+			
+			form_element.id = "configuration-page-form" + form_n;
+			form_element.className = "siimple-form";
+			
+			config_page.appendChild(form_element);
+		}
+		
+		if(typeof titles[form_n] !== "undefined" && titles[form_n] !== "") {
+			let new_form_title = document.createElement("div");
+			
+			new_form_title.className = "siimple-form-title";
+			
+			new_form_title.innerText = titles[form_n];
+			
+			form_element.appendChild(new_form_title);
+		}
+	}
+}
+
+function addConfiguration(config_info) {
+	var input_element = document.getElementById("configuration-input-" + config_info.name);
 	
 	if(input_element === null) {
+		let form_element = document.getElementById("configuration-page-form" + config_info.formn);
+		
 		let new_label = document.createElement("div");
 		let new_field = document.createElement("div");
 		
@@ -386,7 +421,11 @@ function addConfiguration(config_info) {
 			new_field.appendChild(new_helper);
 		}
 		
-		form.appendChild(new_field);
+		if(form_element === null) {
+			form_element = document.getElementById("configuration-page-form0");
+		}
+		
+		form_element.appendChild(new_field);
 	}
 	
 	if(config_info.type !== "B") {

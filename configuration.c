@@ -29,20 +29,20 @@ extern char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 
 
 const config_info_t base_config_table[] = {
-	{"diagnostic_mode",			"", 'B', "1",				0,  1,		1, (void*) &config_diagnostic_mode},
-	{"webui_password",			"", 'T', "1234SACI",		8, 32,		0, (void*) &config_webui_password},
-	{"wifi_ssid",				"", 'T', "",				1, 32,		1, (void*) &config_wifi_ssid},
-	{"wifi_password",			"", 'T', "",				1, 63,		1, (void*) &config_wifi_password},
-	{"wifi_ap_password",		"", 'T', "1234SACI",		8, 32,		1, (void*) &config_wifi_ap_password},
-	{"ts_enabled",				"", 'B', "0",				0,  1,		0, (void*) &config_thingspeak_enabled},
-	{"ts_ch_key",				"", 'T', "",				0, 18,		0, (void*) &config_thingspeak_ch_key},
-	{"mqtt_enabled",			"", 'B', "0",				0,  1,		1, (void*) &config_mqtt_enabled},
-	{"mqtt_hostname",			"", 'T', "io.adafruit.com",	0, 63,		1, (void*) &config_mqtt_hostname},
-	{"mqtt_port",				"", 'I', "8883",			0, 65535,	1, (void*) &config_mqtt_port},
-	{"mqtt_username",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_username},
-	{"mqtt_password",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_password},
-	{"mqtt_clientid",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_clientid},
-	{"mqtt_topic_prefix",		"", 'T', "",				0, 63,		1, (void*) &config_mqtt_topic_prefix},
+	{-1, "diagnostic_mode",			"", 'B', "1",				0,  1,		1, (void*) &config_diagnostic_mode},
+	{-1, "webui_password",			"", 'T', "1234SACI",		8, 32,		0, (void*) &config_webui_password},
+	{-1, "wifi_ssid",				"", 'T', "",				1, 32,		1, (void*) &config_wifi_ssid},
+	{-1, "wifi_password",			"", 'T', "",				1, 63,		1, (void*) &config_wifi_password},
+	{-1, "wifi_ap_password",		"", 'T', "1234SACI",		8, 32,		1, (void*) &config_wifi_ap_password},
+	{-1, "ts_enabled",				"", 'B', "0",				0,  1,		0, (void*) &config_thingspeak_enabled},
+	{-1, "ts_ch_key",				"", 'T', "",				0, 18,		0, (void*) &config_thingspeak_ch_key},
+	{-1, "mqtt_enabled",			"", 'B', "0",				0,  1,		1, (void*) &config_mqtt_enabled},
+	{-1, "mqtt_hostname",			"", 'T', "io.adafruit.com",	0, 63,		1, (void*) &config_mqtt_hostname},
+	{-1, "mqtt_port",				"", 'I', "8883",			0, 65535,	1, (void*) &config_mqtt_port},
+	{-1, "mqtt_username",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_username},
+	{-1, "mqtt_password",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_password},
+	{-1, "mqtt_clientid",			"", 'T', "",				0, 63,		1, (void*) &config_mqtt_clientid},
+	{-1, "mqtt_topic_prefix",		"", 'T', "",				0, 63,		1, (void*) &config_mqtt_topic_prefix},
 };
 
 const int base_config_table_qty = sizeof(base_config_table) / sizeof(config_info_t);

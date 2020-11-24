@@ -2,6 +2,7 @@
 #define CONFIG_TABLE_TOTAL_QTY (base_config_table_qty + extended_config_table_qty)
 
 typedef struct config_info_s {
+	int formn;
 	char name[32];
 	char dname[64];
 	char type;
@@ -17,6 +18,8 @@ typedef struct int_list_s {
 	int *values;
 } int_list_t;
 
+extern const int config_form_qty;
+extern const char config_form_titles[][64];
 
 extern const int base_config_table_qty;
 extern const int extended_config_table_qty;

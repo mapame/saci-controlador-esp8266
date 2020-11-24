@@ -20,9 +20,14 @@ const char custom_code_version[] = "example_2";
 float config_teste;
 char config_teste_texto[CONFIG_STR_SIZE];
 
+const char config_form_titles[][64] = {
+	"Outras Configurações 1",
+	"Outras Configurações 2"
+};
+
 const config_info_t extended_config_table[] = {
-	{"teste_configuracao",		"Configuração de Teste",						'F', "",		0,	100,	0, (void*) &config_teste},
-	{"teste_configuracao_texto","Configuração de Teste (Texto)",				'T', "",		0,	20,		0, (void*) &config_teste_texto}
+	{0, "teste_configuracao",		"Configuração de Teste",						'F', "",		0,	100,	0, (void*) &config_teste},
+	{1, "teste_configuracao_texto",	"Configuração de Teste (Texto)",				'T', "",		0,	20,		0, (void*) &config_teste_texto}
 };
 
 const char dashboard_line_titles[][64] = {
@@ -48,6 +53,8 @@ const dashboard_item_t dashboard_itens[] = {
 	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&("CMD_TESTE2"), NULL, NULL, NULL}}
 };
 
+
+const int config_form_qty = sizeof(config_form_titles) / (sizeof(char) * 64);
 const int extended_config_table_qty = sizeof(extended_config_table) / sizeof(config_info_t);
 const int dashboard_line_title_qty = sizeof(dashboard_line_titles) / (sizeof(char) * 64);
 const int dashboard_item_qty = sizeof(dashboard_itens) / sizeof(dashboard_item_t);
