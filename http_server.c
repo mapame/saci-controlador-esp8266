@@ -315,7 +315,7 @@ static void send_config_forms(struct tcp_pcb *pcb, char *buffer, unsigned int bu
 	
 	websocket_client_write(pcb, buffer, response_len);
 	
-	vTaskDelay(pdMS_TO_TICKS(200));
+	vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
@@ -337,7 +337,7 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		
 		websocket_client_write(pcb, buffer, response_len);
 		
-		vTaskDelay(pdMS_TO_TICKS(100));
+		vTaskDelay(pdMS_TO_TICKS(120));
 	}
 }
 
@@ -351,6 +351,9 @@ static void send_config_values(struct tcp_pcb *pcb, int index, char *buffer, uns
 			continue;
 		
 		if(configuration_read_value(config_index, config_value, sizeof(config_value)) < 0)
+			continue;
+		
+		if(strlen(config_value) == 0)
 			continue;
 		
 		response_len = snprintf(buffer, buffer_len,	"{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}",
@@ -469,7 +472,7 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 	
 	websocket_client_write(pcb, buffer, response_len);
 	
-	vTaskDelay(pdMS_TO_TICKS(200));
+	vTaskDelay(pdMS_TO_TICKS(300));
 }
 
 static void send_dashboard_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
