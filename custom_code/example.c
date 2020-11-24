@@ -44,8 +44,8 @@ const dashboard_item_t dashboard_itens[] = {
 	{0, {4, 6, 12},	"vertical_gauge",	"Teste Indicador",			{(void*)&config_teste, (void*)&("Teste"), NULL, NULL}},
 	{1, {4, 6, 12},	"text",				"Uptime",					{(void*)text_teste_text1, (void*)&(""), NULL, NULL}},
 	{1, {4, 6, 12},	"text",				"Teste Texto",				{(void*)text_teste_text2, (void*)&(""), NULL, NULL}},
-	{2, {4, 6, 12},	"button",			"Botão 1",					{(void*)&((int){1}), (void*)&("CMD_TESTE1"), NULL, NULL}},
-	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&((int){1}), (void*)&("CMD_TESTE2"), NULL, NULL}}
+	{2, {4, 6, 12},	"button",			"Botão 1",					{(void*)&("CMD_TESTE1"), NULL, NULL, NULL}},
+	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&("CMD_TESTE2"), NULL, NULL, NULL}}
 };
 
 const int extended_config_table_qty = sizeof(extended_config_table) / sizeof(config_info_t);

@@ -7,7 +7,7 @@
 const dashboard_item_type_t dashboard_item_types[] = {
 	{"vertical_gauge", "FTNN"}, /* percentage, label */
 	{"text", "TTNN"}, /* text, text_color */
-	{"button", "ITNN"} /* enabled, command */
+	{"button", "TNNN"} /* enabled, command */
 };
 
 const int dashboard_item_type_qty = sizeof(dashboard_item_types) / sizeof(dashboard_item_type_t);

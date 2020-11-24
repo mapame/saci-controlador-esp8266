@@ -53,7 +53,7 @@ function wsOpen() {
 			
 			window.scrollTo(0, 0);
 			
-			disableDashboardButtons();
+			setDashboardButtonsEnabledState(false);
 		};
 		
 		ws.onmessage = function(evt) {
@@ -69,6 +69,8 @@ function wsOpen() {
 				document.getElementById("navbar-logged").style.display = "";
 				
 				localStorage.setItem("access_key", received.new_key);
+				
+				setDashboardButtonsEnabledState(true);
 			}
 			
 			if(typeof received.debug_message === "string") {
@@ -188,7 +190,7 @@ function logout() {
 }
 
 function showLoadingModal(showForSecs, text) {
-	if(typeof text === "string" && text !== "") {
+	if(typeof text === "string") {
 		document.getElementById("loading-modal-text").innerText = text;
 	}
 	
@@ -239,6 +241,8 @@ function handleServerNotification(notification, details) {
 				
 				document.getElementById("navbar-login").style.display = "none";
 				document.getElementById("navbar-logged").style.display = "";
+				
+				setDashboardButtonsEnabledState(true);
 			}
 			
 			break;
@@ -255,7 +259,7 @@ function handleServerNotification(notification, details) {
 				toggleConfigPage();
 			}
 			
-			disableDashboardButtons();
+			setDashboardButtonsEnabledState(false);
 			
 			break;
 			
@@ -598,8 +602,11 @@ function addDashboardItem(item_info) {
 		new_button.classList.add("dashboard-button");
 		new_button.classList.add("siimple-btn");
 		new_button.classList.add("siimple-btn--fluid");
-		new_button.classList.add("siimple-btn--disabled");
 		new_button.classList.add("siimple-btn--primary");
+		
+		if(logged === false) {
+			new_button.classList.add("siimple-btn--disabled");
+		}
 		
 		new_button.innerText = item_info.dname;
 		
@@ -642,18 +649,8 @@ function dashboardItemUpdateParameters(itemNumber, parameters) {
 			
 			break;
 		case "button":
-			let button_element = item_element.getElementsByClassName("dashboard-button")[0];
-			
-			if(typeof parameters[0] === "number" && logged === true) {
-				if(parameters[0] === 0) {
-					button_element.classList.add("siimple-btn--disabled");
-				} else if(parameters[0] === 1){
-					button_element.classList.remove("siimple-btn--disabled");
-				}
-			}
-			
-			if(typeof parameters[1] === "string" && parameters[1] !== "") {
-				button_element.dataset.button_command = parameters[1];
+			if(typeof parameters[0] === "string" && parameters[0] !== "") {
+				item_element.getElementsByClassName("dashboard-button")[0].dataset.button_command = parameters[0];
 			}
 			
 			break;
@@ -702,11 +699,15 @@ function changeChannelValue(valueElement) {
 
 }
 
-function disableDashboardButtons() {
+function setDashboardButtonsEnabledState(state) {
 	var buttonArray = document.getElementsByClassName("dashboard-button");
 	
 	for(let b_n = 0; b_n < buttonArray.length; b_n++) {
-		buttonArray[b_n].classList.add("siimple-btn--disabled");
+		if(state === true) {
+			buttonArray[b_n].classList.remove("siimple-btn--disabled");
+		} else {
+			buttonArray[b_n].classList.add("siimple-btn--disabled");
+		}
 	}
 }
 
@@ -726,7 +727,7 @@ function dashboardButtonCommand(button_element) {
 	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":parameterString}));
 	
-	disableDashboardButtons();
+	showLoadingModal(2, "Enviando comando...");
 }
 
 function updateSystemTime() {
