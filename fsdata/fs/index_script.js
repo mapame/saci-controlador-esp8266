@@ -547,6 +547,10 @@ function updateModuleValues(module_data_array) {
 function addDashboardLines(qty, titles) {
 	var dashboard_div = document.getElementById("regular-dashboard");
 	
+	if(typeof qty !== "number") {
+		return;
+	}
+	
 	for(let line_n = 0; line_n < qty; line_n++) {
 		if(document.getElementById("regular-dashboard-line" + line_n) === null) {
 			let new_line = document.createElement("div");
@@ -584,7 +588,6 @@ function addDashboardItem(item_info) {
 	
 	if(line_element === null) {
 		line_element = document.getElementById("regular-dashboard-line0");
-		console.log("Received an dashboard item description with invalid line. Inserting it in line 0.");
 	}
 	
 	if(valid_widths.includes(ditem_width[0]) === false || valid_widths.includes(ditem_width[1]) === false || valid_widths.includes(ditem_width[2]) === false) {

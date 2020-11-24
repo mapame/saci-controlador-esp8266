@@ -445,7 +445,7 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 	if(buffer == NULL || buffer_len < 20)
 		return;
 	
-	response_len = snprintf(buffer, buffer_len, "{\"dashboard_lines\":{\"qty\":\"%u\",\"titles\":[", dashboard_line_title_qty);
+	response_len = snprintf(buffer, buffer_len, "{\"dashboard_lines\":{\"qty\":%d,\"titles\":[", dashboard_line_title_qty);
 	
 	if(response_len >= buffer_len)
 		return;
