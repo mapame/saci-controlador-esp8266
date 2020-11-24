@@ -151,8 +151,8 @@ void mqtt_task(void *pvParameters) {
 		
 		rtc_get_time(&rtc_time);
 		
-		if(brssl_mqtt_connect(brssl_ctx, config_mqtt_hostname, mqtt_port, rtc_time)!= 0) {
-			vTaskDelay(pdMS_TO_TICKS(1000));
+		if(brssl_mqtt_connect(brssl_ctx, config_mqtt_hostname, mqtt_port, rtc_time) != 0) {
+			vTaskDelay(pdMS_TO_TICKS(2000));
 			continue;
 		}
 		
@@ -167,7 +167,7 @@ void mqtt_task(void *pvParameters) {
 		if(client_ctx->error != MQTT_OK) {
 			debug("MQTT error: %s\n", mqtt_error_str(client_ctx->error));
 			brssl_mqtt_close(brssl_ctx);
-			vTaskDelay(pdMS_TO_TICKS(1000));
+			vTaskDelay(pdMS_TO_TICKS(2000));
 			continue;
 		}
 		
@@ -183,7 +183,7 @@ void mqtt_task(void *pvParameters) {
 				debug("BearSSL last error: %d\n", br_ssl_engine_last_error(&(brssl_ctx->cc.eng)));
 				
 				brssl_mqtt_close(brssl_ctx);
-				vTaskDelay(pdMS_TO_TICKS(1000));
+				vTaskDelay(pdMS_TO_TICKS(2000));
 				break;
 			}
 			
