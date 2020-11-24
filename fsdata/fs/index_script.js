@@ -1,7 +1,6 @@
 var ws;
 var receiveTimeoutInterval;
 var logged = false;
-var configInfoRequested = false;
 var configPageDone = false;
 var configPageShown = false;
 var timeAlertShown = false;
@@ -70,8 +69,6 @@ function wsOpen() {
 				document.getElementById("navbar-logged").style.display = "";
 				
 				localStorage.setItem("access_key", received.new_key);
-				
-				requestConfigInfo();
 			}
 			
 			if(typeof received.debug_message === "string") {
@@ -158,7 +155,8 @@ function toggleConfigPage() {
 		document.getElementById("dashboard-page").style.display = "none";
 		
 		if(configPageDone === false) {
-			showLoadingModal();
+			showLoadingModal(-1, "Carregando configurações...");
+			requestConfigInfo();
 		}
 	}
 }
@@ -241,8 +239,6 @@ function handleServerNotification(notification, details) {
 				
 				document.getElementById("navbar-login").style.display = "none";
 				document.getElementById("navbar-logged").style.display = "";
-				
-				requestConfigInfo();
 			}
 			
 			break;
@@ -855,12 +851,6 @@ function requestConfigInfo() {
 	if(key === null) {
 		return;
 	}
-	
-	if(configInfoRequested === true) {
-		return;
-	}
-	
-	configInfoRequested = true;
 	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"CFGI:"}));
 }
