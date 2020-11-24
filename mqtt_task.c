@@ -19,6 +19,7 @@
 #define MQTT_RECV_BUFFER_SIZE 1024
 
 #define MQTT_CONNECTION_STATUS_TOPIC "conn_status"
+#define MQTT_COMMAND_TOPIC "cmd"
 
 
 extern QueueHandle_t cc_command_queue;
@@ -104,7 +105,7 @@ static void sub_callback(void** unused, struct mqtt_response_publish *received) 
 	memcpy(message_cpy, received->application_message, received->application_message_size);
 	message_cpy[received->application_message_size] = '\0';
 	
-	if(!strncmp(((char*)received->topic_name) + prefix_len, "comandos", received->topic_name_size - prefix_len)) {
+	if(!strncmp(((char*)received->topic_name) + prefix_len, MQTT_COMMAND_TOPIC, received->topic_name_size - prefix_len)) {
 		xQueueSend(cc_command_queue, message_cpy, 0);
 	}
 }
@@ -160,7 +161,7 @@ void mqtt_task(void *pvParameters) {
 		mqtt_init(client_ctx, brssl_ctx, mqtt_sendbuf, MQTT_SEND_BUFFER_SIZE, mqtt_recvbuf, MQTT_RECV_BUFFER_SIZE, sub_callback);
 		mqtt_connect(client_ctx, config_mqtt_clientid, full_topic_name, (const void*) &("offline"), 7, config_mqtt_username, config_mqtt_password, mqtt_connect_flags, 300);
 		
-		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, "comandos");
+		snprintf(full_topic_name, sizeof(full_topic_name), "%s%s", config_mqtt_topic_prefix, MQTT_COMMAND_TOPIC);
 		mqtt_subscribe(client_ctx, full_topic_name, 0);
 		
 		if(client_ctx->error != MQTT_OK) {
