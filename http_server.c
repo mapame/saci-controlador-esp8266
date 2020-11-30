@@ -251,8 +251,12 @@ static int create_dashboard_parameters_json(unsigned int dashboard_i, char *buff
 	buffer[len++] = '[';
 	
 	for(int p_i = 0; p_i < 4; p_i++) {
+		if(dashboard_item_types[type_i].parameter_types[p_i] == 'N')
+			break;
+		
 		if(dashboard_itens[dashboard_i].parameters[p_i] == NULL) {
 			len += snprintf(buffer + len, buffer_len - len, "null,");
+			
 		} else {
 			switch(dashboard_item_types[type_i].parameter_types[p_i]) {
 				case 'I':
@@ -263,8 +267,6 @@ static int create_dashboard_parameters_json(unsigned int dashboard_i, char *buff
 					break;
 				case 'T':
 					len += snprintf(buffer + len, buffer_len - len, "\"%s\",", (char*)dashboard_itens[dashboard_i].parameters[p_i]);
-					break;
-				case 'N':
 					break;
 				default:
 					break;

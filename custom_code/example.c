@@ -47,8 +47,8 @@ const float *thingspeak_values[8] = {&gauge_teste_value, NULL, NULL, NULL, NULL,
 const dashboard_item_t dashboard_itens[] = {
 	{0, {4, 6, 12},	"vertical_gauge",	"Memória Heap Livre",		{(void*)&gauge_teste_value, (void*)gauge_teste_text, NULL, NULL}},
 	{0, {4, 6, 12},	"vertical_gauge",	"Teste Indicador",			{(void*)&config_teste, (void*)&("Teste"), NULL, NULL}},
-	{1, {4, 6, 12},	"text",				"Uptime",					{(void*)text_teste_text1, (void*)&(""), NULL, NULL}},
-	{1, {4, 6, 12},	"text",				"Teste Texto",				{(void*)text_teste_text2, (void*)&(""), NULL, NULL}},
+	{1, {4, 6, 12},	"text",				"Uptime",					{(void*)text_teste_text1, (void*)&("black"), NULL, NULL}},
+	{1, {4, 6, 12},	"text",				"Teste Texto",				{(void*)text_teste_text2, NULL, NULL, NULL}},
 	{2, {4, 6, 12},	"button",			"Botão 1",					{(void*)&("CMD_TESTE1"), NULL, NULL, NULL}},
 	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&("CMD_TESTE2"), NULL, NULL, NULL}}
 };
