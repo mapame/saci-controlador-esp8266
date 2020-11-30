@@ -343,34 +343,25 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 	}
 }
 
-static void send_config_values(struct tcp_pcb *pcb, int index, char *buffer, unsigned int buffer_len) {
+static int send_config_value(struct tcp_pcb *pcb, unsigned int index, char *buffer, unsigned int buffer_len) {
 	const config_info_t *config_info;
 	char config_value[65];
 	unsigned int response_len;
 	
-	for(unsigned int config_index = ((index < 0) ? 0 : index); config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
-		if(configuration_get_info(config_index, &config_info) < 0)
-			continue;
-		
-		if(configuration_read_value(config_index, config_value, sizeof(config_value)) < 0)
-			continue;
-		
-		if(strlen(config_value) == 0)
-			continue;
-		
-		response_len = snprintf(buffer, buffer_len,	"{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}",
-													config_info->name, config_value);
-		
-		if(response_len >= buffer_len)
-			continue;
-		
-		websocket_client_write(pcb, buffer, response_len);
-		
-		vTaskDelay(pdMS_TO_TICKS(80));
-		
-		if(index >= 0)
-			break;
-	}
+	if(configuration_get_info(index, &config_info) < 0)
+		return -1;
+	
+	if(configuration_read_value(index, config_value, sizeof(config_value)) < 0)
+		return -2;
+	
+	response_len = snprintf(buffer, buffer_len,	"{\"config_data\":{\"name\":\"%s\",\"value\":\"%s\"}}", config_info->name, config_value);
+	
+	if(response_len >= buffer_len)
+		return -3;
+	
+	websocket_client_write(pcb, buffer, response_len);
+	
+	return 0;
 }
 
 static void send_module_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
@@ -717,7 +708,10 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			
 			send_config_info(logged_client_pcb, buffer, buffer_len);
 			
-			send_config_values(logged_client_pcb, -1, buffer, buffer_len);
+			for(unsigned int config_index = 0; config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
+				send_config_value(logged_client_pcb, config_index, buffer, buffer_len);
+				vTaskDelay(pdMS_TO_TICKS(80));
+			}
 			
 			websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
 			
@@ -727,7 +721,8 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			result = client_action_config_write(auxbuffer + 5);
 			
 			if(result >= 0)
-				send_config_values(logged_client_pcb, result, buffer, buffer_len);
+				send_config_value(logged_client_pcb, result, buffer, buffer_len);
+			
 		} else if(!strncmp(auxbuffer, "DBTN:", 5)) {
 			client_action_dashboard_button(auxbuffer + 5);
 		}
@@ -836,7 +831,7 @@ void httpd_task(void *pvParameters) {
 	vTaskDelay(pdMS_TO_TICKS(100));
 	
 	for(;;) {
-		if(sdk_wifi_station_get_connect_status() != STATION_GOT_IP && ap_mode == 0) {
+		if(ap_mode == 0 && sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
 			vTaskDelay(pdMS_TO_TICKS(500));
 			continue;
 		}
