@@ -147,12 +147,12 @@ void thingspeak_task(void *pvParameters) {
 	
 	int fd;
 	int rlen;
-	int first_recvd = 1;
+	int first_recvd;
 	
-	int http_status_code = -1;
+	int http_status_code;
 	
-	int result_state = 0;
-	char *result_ptr = NULL;
+	int result_state;
+	char *result_ptr;
 	
 	thingspeak_mutex = xSemaphoreCreateMutex();
 	
@@ -210,6 +210,11 @@ void thingspeak_task(void *pvParameters) {
 			close(fd);
 			continue;
 		}
+		
+		http_status_code = -1;
+		first_recvd = 1;
+		result_state = 0;
+		result_ptr = NULL;
 		
 		while(1) {
 			rlen = socket_read(fd, http_buffer, HTTP_BUFFER_SIZE - 1);
