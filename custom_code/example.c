@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <espressif/esp_wifi.h>
 
@@ -40,6 +41,7 @@ float gauge_teste_value = 0;
 char gauge_teste_text[8] = "0.0 %";
 char text_teste_text1[16] = "0 sec";
 char text_teste_text2[32] = "Hello World!";
+char text_hora_local[32] = "N/A";
 char text_ts_status[64];
 
 const float *thingspeak_values[8] = {&gauge_teste_value, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -49,6 +51,7 @@ const dashboard_item_t dashboard_itens[] = {
 	{0, {4, 6, 12},	"vertical_gauge",	"Teste Indicador",			{(void*)&config_teste, (void*)&("Teste"), NULL, NULL}},
 	{1, {4, 6, 12},	"text",				"Uptime",					{(void*)text_teste_text1, (void*)&("black"), NULL, NULL}},
 	{1, {4, 6, 12},	"text",				"Teste Texto",				{(void*)text_teste_text2, NULL, NULL, NULL}},
+	{1, {4, 6, 12},	"text",				"Hora Local",				{(void*)text_hora_local, NULL, NULL, NULL}},
 	{2, {4, 6, 12},	"button",			"Botão 1",					{(void*)&("CMD_TESTE1"), NULL, NULL, NULL}},
 	{2, {4, 6, 12},	"button",			"Botão 2",					{(void*)&("CMD_TESTE2"), NULL, NULL, NULL}}
 };
@@ -74,11 +77,13 @@ int custom_code_command(const char *cmd, size_t cmd_len) {
 	return 0;
 }
 
-int custom_code_loop(int counter, time_t rtc_time) {
+int custom_code_loop(int counter, const struct tm *rtc_time) {
 	gauge_teste_value = (((float)xPortGetFreeHeapSize()) / 81920.0) * 100.0;
 	snprintf(gauge_teste_text, sizeof(gauge_teste_text), "%.1f %%", gauge_teste_value);
 	
 	snprintf(text_teste_text1, sizeof(text_teste_text1), "%u secs", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000));
+	
+	strftime(text_hora_local, sizeof(text_hora_local), "%F %T", rtc_time);
 	
 	if(counter == 0 || counter == 15) {
 		struct ip_info station_ip_info;

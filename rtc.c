@@ -17,6 +17,8 @@ i2c_dev_t rtc_dev = {.addr = DS3231_ADDR, .bus = 0};
 
 SemaphoreHandle_t rtc_mutex = NULL;
 
+float config_time_zone;
+
 void rtc_init() {
 	rtc_mutex = xSemaphoreCreateMutex();
 	
@@ -56,6 +58,19 @@ int rtc_get_time(time_t *time) {
 	*time = mktime(&bdtime);
 	
 	xSemaphoreGive(rtc_mutex);
+	
+	return 0;
+}
+
+int rtc_get_time_local(time_t *time) {
+	int result;
+	
+	result = rtc_get_time(time);
+	
+	if(result < 0)
+		return result;
+	
+	*time += (int)(config_time_zone * 3600.0);
 	
 	return 0;
 }

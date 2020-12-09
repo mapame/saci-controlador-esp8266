@@ -12,6 +12,8 @@ extern int config_diagnostic_mode;
 
 extern char config_webui_password[CONFIG_STR_SIZE];
 
+extern float config_time_zone;
+
 extern char config_wifi_ssid[CONFIG_STR_SIZE];
 extern char config_wifi_password[CONFIG_STR_SIZE];
 extern char config_wifi_ap_password[CONFIG_STR_SIZE];
@@ -31,6 +33,7 @@ extern char config_mqtt_topic_prefix[CONFIG_STR_SIZE];
 const config_info_t base_config_table[] = {
 	{-1, "diagnostic_mode",			"", 'B', "1",				0,  1,		1, (void*) &config_diagnostic_mode},
 	{-1, "webui_password",			"", 'T', "1234SACI",		8, 32,		0, (void*) &config_webui_password},
+	{-1, "time_zone",				"", 'F', "-3",				-12, +14,	0, (void*) &config_time_zone},
 	{-1, "wifi_ssid",				"", 'T', "",				1, 32,		1, (void*) &config_wifi_ssid},
 	{-1, "wifi_password",			"", 'T', "",				1, 63,		1, (void*) &config_wifi_password},
 	{-1, "wifi_ap_password",		"", 'T', "1234SACI",		8, 32,		1, (void*) &config_wifi_ap_password},
