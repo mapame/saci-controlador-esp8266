@@ -77,13 +77,17 @@ int custom_code_command(const char *cmd, size_t cmd_len) {
 	return 0;
 }
 
-int custom_code_loop(int counter, const struct tm *rtc_time) {
+int custom_code_loop(int counter, time_t rtc_time) {
+	struct tm rtc_time_tm;
+	
 	gauge_teste_value = (((float)xPortGetFreeHeapSize()) / 81920.0) * 100.0;
 	snprintf(gauge_teste_text, sizeof(gauge_teste_text), "%.1f %%", gauge_teste_value);
 	
 	snprintf(text_teste_text1, sizeof(text_teste_text1), "%u secs", (xTaskGetTickCount() * portTICK_PERIOD_MS / 1000));
 	
-	strftime(text_hora_local, sizeof(text_hora_local), "%F %T", rtc_time);
+	gmtime_r(&rtc_time, &rtc_time_tm);
+	
+	strftime(text_hora_local, sizeof(text_hora_local), "%F %T", &rtc_time_tm);
 	
 	if(counter == 0 || counter == 15) {
 		struct ip_info station_ip_info;
