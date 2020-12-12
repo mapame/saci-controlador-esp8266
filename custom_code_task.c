@@ -27,7 +27,7 @@ float cc_cycle_duration;
 
 int custom_code_setup();
 int custom_code_command(const char *cmd, size_t cmd_len);
-int custom_code_loop(int counter, const struct tm *rtc_time);
+int custom_code_loop(int counter, time_t rtc_time);
 
 void custom_code_task(void *pvParameters) {
 	int counter = 0;
@@ -60,7 +60,10 @@ void custom_code_task(void *pvParameters) {
 		if(xQueueReceive(cc_command_queue, (void *)command, 0) == pdPASS)
 			custom_code_command(command, sizeof(command));
 		
-		rtc_get_time_local(&rtc_time);
+		if(rtc_get_time(&rtc_time) >= 0)
+			rtc_time = convert_time_to_local(rtc_time);
+		else
+			rtc_time = 0;
 		
 		custom_code_loop(counter, rtc_time);
 		

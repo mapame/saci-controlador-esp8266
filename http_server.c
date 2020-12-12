@@ -876,13 +876,18 @@ void httpd_task(void *pvParameters) {
 		counter = (counter + 1) % 2;
 		
 		if(counter == 0) {
-			time_t rtc_time;
+			time_t rtc_time, rtc_time_local;
+			struct tm rtc_time_tm;
 			float rtc_temperature;
 			
 			rtc_get_temp(&rtc_temperature);
 			rtc_get_time(&rtc_time);
 			
-			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"temperature\":%.1f,\"time\":%u}", rtc_temperature, (uint32_t) rtc_time);
+			rtc_time_local = convert_time_to_local(rtc_time);
+			
+			gmtime_r(&rtc_time_local, &rtc_time_tm);
+			
+			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"temperature\":%.1f,\"time\":[%u,%u,%u,%u,%u,%u,%u]}", rtc_temperature, (uint32_t) rtc_time, rtc_time_tm.tm_year + 1900, rtc_time_tm.tm_mon + 1, rtc_time_tm.tm_mday, rtc_time_tm.tm_hour, rtc_time_tm.tm_min, rtc_time_tm.tm_sec);
 			
 			websocket_all_clients_write(response_buffer, response_len);
 			

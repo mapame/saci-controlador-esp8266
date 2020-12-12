@@ -89,7 +89,7 @@ function wsOpen() {
 				document.getElementById('system-temperature').innerHTML = Math.trunc(received.temperature) + ' °C';
 			}
 			
-			if(typeof received.time === "number") {
+			if(typeof received.time === "object") {
 				updateReceivedTime(received.time);
 			}
 			
@@ -294,12 +294,11 @@ function handleServerNotification(notification, details) {
 	}
 }
 
-function updateReceivedTime(received_time) {
-	var moduleDate = new Date(received_time * 1000);
+function updateReceivedTime(time_array) {
 	var localDate = new Date();
 	var timeElement = document.getElementById('system-time');
 	
-	if(received_time == 0) {
+	if(time_array[0] === 0) {
 		timeElement.innerHTML = "--/--/---- --:--:--";
 		timeElement.style.color = "red";
 		timeElement.title = "O relógio do sistema está parado.";
@@ -310,7 +309,9 @@ function updateReceivedTime(received_time) {
 			timeAlertShown = true;
 		}
 	} else {
-		timeElement.innerHTML = moduleDate.getDate().toString().padStart(2, "0") + "/" + (moduleDate.getMonth() + 1).toString().padStart(2, "0") + "/" + moduleDate.getFullYear() + " " + moduleDate.getHours().toString().padStart(2, "0") + ":" + moduleDate.getMinutes().toString().padStart(2, "0") + ":" + moduleDate.getSeconds().toString().padStart(2, "0");
+		let moduleDate = new Date(time_array[0] * 1000);
+		
+		timeElement.innerHTML = time_array[3].toString().padStart(2, "0") + "/" + time_array[2].toString().padStart(2, "0") + "/" + time_array[1] + " " + time_array[4].toString().padStart(2, "0") + ":" + time_array[5].toString().padStart(2, "0") + ":" + time_array[6].toString().padStart(2, "0");
 		
 		if(Math.abs(localDate.getTime() - moduleDate.getTime()) > 30 * 1000) {
 			timeElement.style.color = "orange";

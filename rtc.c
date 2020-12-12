@@ -62,19 +62,6 @@ int rtc_get_time(time_t *time) {
 	return 0;
 }
 
-int rtc_get_time_local(time_t *time) {
-	int result;
-	
-	result = rtc_get_time(time);
-	
-	if(result < 0)
-		return result;
-	
-	*time += (int)(config_time_zone * 3600.0);
-	
-	return 0;
-}
-
 int rtc_get_temp(float *temp) {
 	if(temp == NULL)
 		return -1;
@@ -115,4 +102,8 @@ int rtc_set_time(const time_t time) {
 	xSemaphoreGive(rtc_mutex);
 	
 	return 0;
+}
+
+inline time_t convert_time_to_local(time_t time) {
+	return time + (int)(config_time_zone * 3600.0);
 }
