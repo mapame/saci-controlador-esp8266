@@ -520,7 +520,7 @@ int module_get_channel_values(unsigned int module_addr, unsigned int channeln, v
 		return -4;
 	}
 	
-	*value_ptr = malloc(vsize);
+	*value_ptr = malloc(vsize * port_qty);
 	
 	memcpy(*value_ptr, module_list[module_addr].channels[channeln].values, vsize * port_qty);
 	
