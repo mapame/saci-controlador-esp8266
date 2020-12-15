@@ -1,3 +1,6 @@
+extern unsigned int mm_comm_error_counter;
+extern unsigned int mm_op_error_counter;
+
 int module_get_info(unsigned int module_addr, char *name_buffer, unsigned int buffer_len);
 int module_get_channel_info(unsigned int module_addr, unsigned int channeln, char *name_buffer, char *type, char *writable);
 int module_get_channel_bounds(unsigned int module_addr, unsigned int channeln, float *min, float *max);

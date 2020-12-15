@@ -43,7 +43,12 @@ SemaphoreHandle_t module_manager_mutex = NULL;
 extern TaskHandle_t custom_code_task_handle;
 
 module_desc_t module_list[MAX_MODULE_QTY];
+
+unsigned int mm_comm_error_counter = 0;
+unsigned int mm_op_error_counter = 0;
+
 unsigned int value_update_period_ms = 1000;
+
 float mm_cycle_duration;
 
 static int update_values(unsigned int force_read) {
@@ -61,7 +66,6 @@ static int update_values(unsigned int force_read) {
 		return -1;
 	
 	/* TODO: retry when communication fail */
-	/* TODO: notify when a communication error happens */
 	
 	for(module_addr = 0; module_addr < MAX_MODULE_QTY; module_addr++) {
 		for(chn = 0; chn < module_list[module_addr].channel_qty; chn++) {
@@ -103,11 +107,15 @@ static int update_values(unsigned int force_read) {
 					comm_send_command('R', module_addr, aux_buffer);
 					error = comm_receive_response('R', aux_buffer, 50);
 					
-					if(error != COMM_OK)
+					if(error != COMM_OK) {
+						mm_comm_error_counter++;
 						continue;
+					}
 					
-					if(aux_buffer[0] == '\x15')
+					if(aux_buffer[0] == '\x15') {
+						mm_op_error_counter++;
 						continue;
+					}
 					
 				}
 				
@@ -285,11 +293,15 @@ static int set_port_value(unsigned int module_addr, unsigned int channeln, unsig
 	comm_send_command('W', module_addr, aux_buffer);
 	error = comm_receive_response('W', aux_buffer, 50);
 	
-	if(error != COMM_OK)
+	if(error != COMM_OK) {
+		mm_comm_error_counter++;
 		return -1;
+	}
 	
-	if(aux_buffer[0] == '\x15')
+	if(aux_buffer[0] == '\x15') {
+		mm_op_error_counter++;
 		return -2;
+	}
 	
 	switch(module_list[module_addr].channels[channeln].type) {
 		case 'B':
@@ -593,8 +605,10 @@ static int create_module_list() {
 			continue;
 		}
 		
-		if(aux_buffer[0] == '\x15')
+		if(aux_buffer[0] == '\x15') {
+			mm_op_error_counter++;
 			continue;
+		}
 		
 		if(parse_content(aux_buffer, aux_ptrs, 3) != 3)
 			continue;
