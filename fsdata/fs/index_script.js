@@ -77,6 +77,10 @@ function wsOpen() {
 				console.log(received.debug_message);
 			}
 			
+			if(typeof received.version_info === "object") {
+				document.getElementById("footer-version-text").innerText = "Versão: " + received.version_info[0] + " / " + received.version_info[1];
+			}
+			
 			if(typeof received.server_notification === "string") {
 				handleServerNotification(received.server_notification, received.details);
 			}
@@ -870,7 +874,6 @@ function showSystemInfo(system_info) {
 	var uptimeSeconds = system_info.uptime % 60.0;
 	var uptimeText = uptimeDays + " dias, " + uptimeHours.toString().padStart(2, "0") + ":" + uptimeMinutes.toString().padStart(2, "0") + ":" + uptimeSeconds.toString().padStart(2, "0");
 	
-	document.getElementById("sysinfo-fw-ver").innerText = system_info.fw_ver + " / " + system_info.cc_ver;
 	document.getElementById("sysinfo-free-heap").innerText = system_info.free_heap + " bytes";
 	document.getElementById("sysinfo-uptime").innerText = uptimeText;
 	
