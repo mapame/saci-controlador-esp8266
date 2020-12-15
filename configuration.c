@@ -83,12 +83,14 @@ static int convert_text_to_int_list(const char *text, int min, int max, int_list
 		if(sscanf(tokptr, "%d", &auxi) != 1) {
 			free(list->values);
 			list->values = NULL;
+			list->qty = 0;
 			return -3;
 		}
 		
 		if(auxi > max || auxi < min) {
 			free(list->values);
 			list->values = NULL;
+			list->qty = 0;
 			return -4;
 		}
 		
