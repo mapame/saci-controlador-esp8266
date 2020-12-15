@@ -874,6 +874,9 @@ function showSystemInfo(system_info) {
 	document.getElementById("sysinfo-free-heap").innerText = system_info.free_heap + " bytes";
 	document.getElementById("sysinfo-uptime").innerText = uptimeText;
 	
+	document.getElementById("sysinfo-errc-mm-comm").innerText = system_info.err_c[0];
+	document.getElementById("sysinfo-errc-mm-op").innerText = system_info.err_c[1];
+	
 	document.getElementById("sysinfo-cyd-http").innerText = system_info.cycle_duration[0] + " ms";
 	document.getElementById("sysinfo-cyd-mm").innerText = system_info.cycle_duration[1] + " ms";
 	document.getElementById("sysinfo-cyd-cc").innerText = system_info.cycle_duration[2] + " ms";

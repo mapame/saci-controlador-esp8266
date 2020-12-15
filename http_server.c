@@ -674,9 +674,10 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			client_action_update_time(auxbuffer + 4);
 			
 		} else if(!strncmp(auxbuffer, "SYSI:", 5)) {
-			response_len = snprintf(buffer, buffer_len,	"{\"system_info\":{\"fw_ver\":\"%s\",\"cc_ver\":\"%s\",\"uptime\":%u,\"free_heap\":%u,\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+			response_len = snprintf(buffer, buffer_len,	"{\"system_info\":{\"fw_ver\":\"%s\",\"cc_ver\":\"%s\",\"uptime\":%u,\"free_heap\":%u,\"err_c\":[%u,%u],\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
 																				FW_VERSION, custom_code_version,
 																				(xTaskGetTickCount() / configTICK_RATE_HZ), (unsigned int) xPortGetFreeHeapSize(),
+																				mm_comm_error_counter, mm_op_error_counter,
 																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration, mqtt_cycle_duration,
 																				(unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle),
 																				(unsigned int)uxTaskGetStackHighWaterMark(module_manager_task_handle),
