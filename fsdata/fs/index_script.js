@@ -89,10 +89,6 @@ function wsOpen() {
 				showSystemInfo(received.system_info);
 			}
 			
-			if(typeof received.temperature === "number") {
-				document.getElementById('system-temperature').innerHTML = Math.trunc(received.temperature) + ' °C';
-			}
-			
 			if(typeof received.time === "object") {
 				updateReceivedTime(received.time);
 			}
@@ -876,6 +872,7 @@ function showSystemInfo(system_info) {
 	
 	document.getElementById("sysinfo-free-heap").innerText = system_info.free_heap + " bytes";
 	document.getElementById("sysinfo-uptime").innerText = uptimeText;
+	document.getElementById("sysinfo-temp").innerText = system_info.temp + " °C";
 	
 	document.getElementById("sysinfo-errc-mm-comm").innerText = system_info.err_c[0];
 	document.getElementById("sysinfo-errc-mm-op").innerText = system_info.err_c[1];

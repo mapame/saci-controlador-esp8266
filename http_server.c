@@ -674,8 +674,12 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			client_action_update_time(auxbuffer + 4);
 			
 		} else if(!strncmp(auxbuffer, "SYSI:", 5)) {
-			response_len = snprintf(buffer, buffer_len,	"{\"system_info\":{\"uptime\":%u,\"free_heap\":%u,\"err_c\":[%u,%u],\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
-																				(xTaskGetTickCount() / configTICK_RATE_HZ), (unsigned int) xPortGetFreeHeapSize(),
+			float rtc_temperature = -1;
+			
+			rtc_get_temp(&rtc_temperature);
+			
+			response_len = snprintf(buffer, buffer_len,	"{\"system_info\":{\"uptime\":%u,\"free_heap\":%u,\"temp\":%.1f,\"err_c\":[%u,%u],\"cycle_duration\":[%.2f,%.2f,%.2f,%.2f],\"task_shwm\":[%u,%u,%u,%u]}}",
+																				(xTaskGetTickCount() / configTICK_RATE_HZ), (unsigned int) xPortGetFreeHeapSize(), rtc_temperature,
 																				mm_comm_error_counter, mm_op_error_counter,
 																				http_cycle_duration, mm_cycle_duration, cc_cycle_duration, mqtt_cycle_duration,
 																				(unsigned int)uxTaskGetStackHighWaterMark(httpd_task_handle),
@@ -881,16 +885,14 @@ void httpd_task(void *pvParameters) {
 		if(counter == 0) {
 			time_t rtc_time, rtc_time_local;
 			struct tm rtc_time_tm;
-			float rtc_temperature;
 			
-			rtc_get_temp(&rtc_temperature);
 			rtc_get_time(&rtc_time);
 			
 			rtc_time_local = convert_time_to_local(rtc_time);
 			
 			gmtime_r(&rtc_time_local, &rtc_time_tm);
 			
-			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"temperature\":%.1f,\"time\":[%u,%u,%u,%u,%u,%u,%u]}", rtc_temperature, (uint32_t) rtc_time, rtc_time_tm.tm_year + 1900, rtc_time_tm.tm_mon + 1, rtc_time_tm.tm_mday, rtc_time_tm.tm_hour, rtc_time_tm.tm_min, rtc_time_tm.tm_sec);
+			response_len = snprintf(response_buffer, sizeof(response_buffer), "{\"time\":[%u,%u,%u,%u,%u,%u,%u]}", (uint32_t) rtc_time, rtc_time_tm.tm_year + 1900, rtc_time_tm.tm_mon + 1, rtc_time_tm.tm_mday, rtc_time_tm.tm_hour, rtc_time_tm.tm_min, rtc_time_tm.tm_sec);
 			
 			websocket_all_clients_write(response_buffer, response_len);
 			
