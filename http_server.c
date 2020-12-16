@@ -339,7 +339,7 @@ static void send_config_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		
 		websocket_client_write(pcb, buffer, response_len);
 		
-		vTaskDelay(pdMS_TO_TICKS(120));
+		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 }
 
@@ -385,7 +385,7 @@ static void send_module_info(struct tcp_pcb *pcb, char *buffer, unsigned int buf
 		
 		websocket_client_write(pcb, buffer, response_len);
 		
-		vTaskDelay(pdMS_TO_TICKS(100));
+		vTaskDelay(pdMS_TO_TICKS(150));
 	}
 }
 
@@ -465,7 +465,7 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 	
 	websocket_client_write(pcb, buffer, response_len);
 	
-	vTaskDelay(pdMS_TO_TICKS(300));
+	vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 static void send_dashboard_info(struct tcp_pcb *pcb, char *buffer, unsigned int buffer_len) {
@@ -494,7 +494,7 @@ static void send_dashboard_info(struct tcp_pcb *pcb, char *buffer, unsigned int 
 		
 		websocket_client_write(pcb, buffer, response_len);
 		
-		vTaskDelay(pdMS_TO_TICKS(100));
+		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 }
 
