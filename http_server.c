@@ -290,10 +290,10 @@ static void send_config_forms(struct tcp_pcb *pcb, char *buffer, unsigned int bu
 	
 	unsigned int response_len;
 	
-	if(buffer == NULL || buffer_len < 20)
+	if(buffer == NULL || buffer_len < 26)
 		return;
 	
-	response_len = snprintf(buffer, buffer_len, "{\"config_forms\":{\"qty\":%d,\"titles\":[", config_form_qty);
+	response_len = sprintf(buffer, "{\"config_form_titles\":[");
 	
 	if(response_len >= buffer_len)
 		return;
@@ -302,7 +302,7 @@ static void send_config_forms(struct tcp_pcb *pcb, char *buffer, unsigned int bu
 		
 		result = snprintf(buffer + response_len, buffer_len - response_len, "\"%s\",", &(config_form_titles[i][0]));
 		
-		if(response_len + result + 3 - 1 >= buffer_len)
+		if(response_len + result + 2 - 1 >= buffer_len)
 			break;
 		
 		response_len += result;
@@ -312,7 +312,6 @@ static void send_config_forms(struct tcp_pcb *pcb, char *buffer, unsigned int bu
 		response_len--; // Remove last comma
 	
 	buffer[response_len++] = ']';
-	buffer[response_len++] = '}';
 	buffer[response_len++] = '}';
 	
 	websocket_client_write(pcb, buffer, response_len);
@@ -712,9 +711,14 @@ static inline void process_client_actions(char *buffer, unsigned int buffer_len)
 			
 			send_config_info(logged_client_pcb, buffer, buffer_len);
 			
+			websocket_client_write(logged_client_pcb, done_message, strlen(done_message));
+			
+		} else if(!strncmp(auxbuffer, "CFGV:", 5)) {
+			const char done_message[] = "{\"server_notification\":\"config_value_done\"}";
+			
 			for(unsigned int config_index = 0; config_index < CONFIG_TABLE_TOTAL_QTY; config_index++) {
 				send_config_value(logged_client_pcb, config_index, buffer, buffer_len);
-				vTaskDelay(pdMS_TO_TICKS(80));
+				vTaskDelay(pdMS_TO_TICKS(110));
 			}
 			
 			websocket_client_write(logged_client_pcb, done_message, strlen(done_message));

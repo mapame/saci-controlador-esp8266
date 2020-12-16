@@ -4,6 +4,9 @@ var logged = false;
 var configPageDone = false;
 var configPageShown = false;
 var timeAlertShown = false;
+var configVersion = "";
+var configFormArray = [];
+var configInfoArray = [];
 
 window.onload = function() {
 	if(localStorage.getItem("access_key") === null) {
@@ -79,6 +82,7 @@ function wsOpen() {
 			
 			if(typeof received.version_info === "object") {
 				document.getElementById("footer-version-text").innerText = "Versão: " + received.version_info[0] + " / " + received.version_info[1];
+				configVersion = received.version_info[0] + "-" + received.version_info[1];
 			}
 			
 			if(typeof received.server_notification === "string") {
@@ -101,12 +105,16 @@ function wsOpen() {
 				updateModuleValues(received.module_data);
 			}
 			
-			if(typeof received.config_forms === "object") {
-				addConfigurationForms(received.config_forms.qty, received.config_forms.titles)
+			if(typeof received.config_form_titles === "object") {
+				addConfigurationForms(received.config_form_titles);
+				
+				configFormArray = received.config_form_titles;
 			}
 			
 			if(typeof received.config_info === "object") {
 				addConfiguration(received.config_info);
+				
+				configInfoArray.push(received.config_info);
 			}
 			
 			if(typeof received.config_data === "object") {
@@ -161,8 +169,20 @@ function toggleConfigPage() {
 		document.getElementById("dashboard-page").style.display = "none";
 		
 		if(configPageDone === false) {
-			showLoadingModal(-1, "Carregando configurações...");
-			requestConfigInfo();
+			showLoadingModal(-1, "Carregando...");
+			
+			if(localStorage.getItem("config_version") === configVersion) {
+				addConfigurationForms(JSON.parse(localStorage.getItem("config_forms")));
+				addConfigurationArray(JSON.parse(localStorage.getItem("config_info")));
+				
+				requestConfigValues();
+			} else {
+				localStorage.setItem("config_forms", "");
+				localStorage.setItem("config_info", "");
+				localStorage.setItem("config_version", "");
+				
+				requestConfigInfo();
+			}
 		}
 	}
 }
@@ -235,6 +255,14 @@ function handleServerNotification(notification, details) {
 			break;
 			
 		case "config_info_done":
+			localStorage.setItem("config_version", configVersion);
+			localStorage.setItem("config_forms", JSON.stringify(configFormArray));
+			localStorage.setItem("config_info", JSON.stringify(configInfoArray));
+			
+			requestConfigValues();
+			break;
+			
+		case "config_value_done":
 			configPageDone = true;
 			hideLoadingModal();
 			break;
@@ -322,14 +350,14 @@ function updateReceivedTime(time_array) {
 	}
 }
 
-function addConfigurationForms(qty, titles) {
+function addConfigurationForms(title_array) {
 	var config_page = document.getElementById("configuration-page");
 	
-	if(typeof qty !== "number") {
+	if(typeof title_array !== "object" || title_array.length < 1) {
 		return;
 	}
 	
-	for(let form_n = 0; form_n < qty; form_n++) {
+	for(let form_n = 0; form_n < title_array.length; form_n++) {
 		let form_element = document.getElementById("configuration-page-form" + form_n);
 		
 		if(form_element === null) {
@@ -341,12 +369,12 @@ function addConfigurationForms(qty, titles) {
 			config_page.appendChild(form_element);
 		}
 		
-		if(typeof titles[form_n] !== "undefined" && titles[form_n] !== "") {
+		if(title_array[form_n] !== "") {
 			let new_form_title = document.createElement("div");
 			
 			new_form_title.className = "siimple-form-title";
 			
-			new_form_title.innerText = titles[form_n];
+			new_form_title.innerText = title_array[form_n];
 			
 			form_element.appendChild(new_form_title);
 		}
@@ -440,6 +468,12 @@ function addConfiguration(config_info) {
 	input_element.dataset.config_min = config_info.min;
 	input_element.dataset.config_max = config_info.max;
 	input_element.dataset.config_req_restart = config_info.req_restart;
+}
+
+function addConfigurationArray(config_info_array) {
+	for(let cfg_i = 0; cfg_i < config_info_array.length; cfg_i++) {
+		addConfiguration(config_info_array[cfg_i]);
+	}
 }
 
 function updateConfigurationValue(name, value) {
@@ -900,6 +934,16 @@ function requestConfigInfo() {
 	}
 	
 	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"CFGI:"}));
+}
+
+function requestConfigValues() {
+	var key = localStorage.getItem("access_key");
+	
+	if(key === null) {
+		return;
+	}
+	
+	ws.send(JSON.stringify({"key":key,"op":"action","parameters":"CFGV:"}));
 }
 
 function checkConfigIntList(value, min, max) {
