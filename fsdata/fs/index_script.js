@@ -121,8 +121,10 @@ function wsOpen() {
 				updateConfigurationValue(received.config_data.name, received.config_data.value);
 			}
 			
-			if(typeof received.dashboard_lines === "object") {
-				addDashboardLines(received.dashboard_lines.qty, received.dashboard_lines.titles);
+			if(typeof received.dashboard_line_titles === "object") {
+				document.getElementById('dashboard-disabled-warning').style.display = "none";
+				
+				addDashboardLines(received.dashboard_line_titles);
 			}
 			
 			if(typeof received.dashboard_info === "object") {
@@ -251,6 +253,7 @@ function handleServerNotification(notification, details) {
 			break;
 			
 		case "loading_done":
+			document.getElementById("dashboard-page").style.display = "";
 			hideLoadingModal();
 			break;
 			
@@ -579,28 +582,28 @@ function updateModuleValues(module_data_array) {
 	}
 }
 
-function addDashboardLines(qty, titles) {
+function addDashboardLines(title_array) {
 	var dashboard_div = document.getElementById("regular-dashboard");
 	
-	if(typeof qty !== "number") {
+	if(typeof title_array !== "object" || title_array.length < 1) {
 		return;
 	}
 	
-	for(let line_n = 0; line_n < qty; line_n++) {
+	for(let line_n = 0; line_n < title_array.length; line_n++) {
 		if(document.getElementById("regular-dashboard-line" + line_n) === null) {
 			let new_line = document.createElement("div");
 			
 			new_line.id = "regular-dashboard-line" + line_n;
 			new_line.className = "siimple-grid-row";
 			
-			if(typeof titles[line_n] !== "undefined" && titles[line_n] !== "") {
+			if(typeof title_array[line_n] !== "undefined" && title_array[line_n] !== "") {
 				let new_line_title = document.createElement("div");
 				let new_line_rule = document.createElement("div");
 				
 				new_line_title.className = "siimple-h5";
 				new_line_rule.className = "siimple-rule";
 				
-				new_line_title.innerText = titles[line_n];
+				new_line_title.innerText = title_array[line_n];
 				
 				dashboard_div.appendChild(new_line_title);
 				dashboard_div.appendChild(new_line_rule);

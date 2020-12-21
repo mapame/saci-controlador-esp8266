@@ -35,6 +35,7 @@ extern TaskHandle_t mqtt_task_handle;
 extern QueueHandle_t cc_command_queue;
 
 char config_webui_password[CONFIG_STR_SIZE];
+int config_enable_web_dashboard = 0;
 
 MessageBufferHandle_t client_action_buffer = NULL;
 
@@ -437,10 +438,10 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 	
 	unsigned int response_len;
 	
-	if(buffer == NULL || buffer_len < 20)
+	if(buffer == NULL || buffer_len < 29)
 		return;
 	
-	response_len = snprintf(buffer, buffer_len, "{\"dashboard_lines\":{\"qty\":%d,\"titles\":[", dashboard_line_title_qty);
+	response_len = sprintf(buffer, "{\"dashboard_line_titles\":[");
 	
 	if(response_len >= buffer_len)
 		return;
@@ -449,7 +450,7 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 		
 		result = snprintf(buffer + response_len, buffer_len - response_len, "\"%s\",", &(dashboard_line_titles[i][0]));
 		
-		if(response_len + result + 3 - 1 >= buffer_len)
+		if(response_len + result + 2 - 1 >= buffer_len)
 			break;
 		
 		response_len += result;
@@ -459,7 +460,6 @@ static void send_dashboard_lines(struct tcp_pcb *pcb, char *buffer, unsigned int
 		response_len--; // Remove last comma
 	
 	buffer[response_len++] = ']';
-	buffer[response_len++] = '}';
 	buffer[response_len++] = '}';
 	
 	websocket_client_write(pcb, buffer, response_len);
@@ -865,7 +865,7 @@ void httpd_task(void *pvParameters) {
 				
 				send_module_info(new_client_pcb, response_buffer, sizeof(response_buffer));
 				
-			} else {
+			} else if(config_enable_web_dashboard) {
 				send_dashboard_lines(new_client_pcb, response_buffer, sizeof(response_buffer));
 				
 				send_dashboard_info(new_client_pcb, response_buffer, sizeof(response_buffer));
@@ -902,7 +902,7 @@ void httpd_task(void *pvParameters) {
 			
 			if(config_diagnostic_mode) {
 				send_module_data(response_buffer, sizeof(response_buffer));
-			} else {
+			} else if(config_enable_web_dashboard) {
 				send_dashboard_parameters(response_buffer, sizeof(response_buffer));
 			}
 		}

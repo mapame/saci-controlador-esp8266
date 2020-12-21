@@ -74,13 +74,14 @@
 		<div id="system-time" class="siimple-navbar-item" style="cursor: default;">--/--/---- --:--:--</div>
 	</div>
 	
-	<div id="dashboard-page" class="siimple-content siimple-content--large">
+	<div id="dashboard-page" class="siimple-content siimple-content--large" style="display: none;">
 		<div id="regular-dashboard" class="siimple-grid">
+			<div id="dashboard-disabled-warning" class="siimple-tip siimple-tip--warning">O painel de controle está desativado. Para ativá-lo, habilite a opção na página de configuração, salve as configurações e então atualize a página.</div>
 			<div id="regular-dashboard-line0" class="siimple-grid-row"></div>
 		</div>
 		<div id="diagnostic-dashboard" style="display: none;">
 			<div class="siimple-tip siimple-tip--warning">Sistema em modo de diagnóstico.</div>
-			<div class="siimple-tip siimple-tip--error" id="diagnostic-mode-no-module-warning">Nenhum módulo detectado.</div>
+			<div id="diagnostic-mode-no-module-warning" class="siimple-tip siimple-tip--error">Nenhum módulo detectado.</div>
 			<div class="siimple-grid">
 				<div id="diagnostic-mode-card-row" class="siimple-grid-row"></div>
 			</div>
@@ -104,6 +105,12 @@
 			<div class="siimple-form-title">Gerais</div>
 			
 			<div class="siimple-field">
+				<div class="siimple-field-label">Senha de acesso</div>
+				<input id="configuration-input-webui_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
+				<div class="siimple-field-helper">Senha de acesso à página de configuração</div>
+			</div>
+			
+			<div class="siimple-field">
 				<div class="siimple-field-label">Modo de diagnostico</div>
 				<div class="siimple-switch">
 					<input id="configuration-input-diagnostic_mode" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
@@ -112,9 +119,11 @@
 			</div>
 			
 			<div class="siimple-field">
-				<div class="siimple-field-label">Senha de acesso</div>
-				<input id="configuration-input-webui_password" type="text" class="siimple-input siimple-input--fluid configuration-input" placeholder="">
-				<div class="siimple-field-helper">Senha de acesso à página de configuração</div>
+				<div class="siimple-field-label">Habilitar o painel de controle local</div>
+				<div class="siimple-switch">
+					<input id="configuration-input-dashboard_enabled" class="configuration-input" type="checkbox" onchange="this.value = (this.checked ? 1 : 0)">
+					<label for="configuration-input-dashboard_enabled"></label>
+				</div>
 			</div>
 			
 			<div class="siimple-field">
