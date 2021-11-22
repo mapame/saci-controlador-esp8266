@@ -8,7 +8,7 @@ Além da interface Web o sistema também pode se conectar a um servidor MQTT (co
 
 [<img src="images/diagrama_geral.png" width="800">](images/diagrama_geral.png)
 
-O código dos módulos periféricos está em um [repositório separado](https://github.com/mapame/saci-controlador-esp8266).
+O código dos módulos periféricos está em um [repositório separado](https://github.com/mapame/saci-perifericos-avr).
 
 ### Módulo controlador
 
